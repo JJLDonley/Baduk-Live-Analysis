@@ -1,28 +1,40 @@
-# Baduk-Live-Analysis
-
 Baduk Live Analysis (BLA)
-Baduk Live Analysis, or BLA for short, is a dynamic application that integrates OGS websockets with KataGo to offer users real-time game analysis.
+Baduk Live Analysis (BLA) is a cutting-edge application that seamlessly marries the capabilities of OGS websockets with KataGo's power to provide unparalleled real-time game analysis.
 
-Utilizing the power of the Express framework, BLA crafts a user experience centered around URL routes. These routes give rise to ephemeral databases unique to each session, ensuring a streamlined and responsive user experience.
+Harnessing the agility of the Express framework, BLA presents an interactive user experience built on unique URL routes. Each route generates a transient database for its session, guaranteeing efficiency and rapid responsiveness.
 
 Key Features:
-Real-time Interaction: BLA provides instant game updates on every move.
-Dynamic Analysis: At every stage of the game, players can access:
-  Game Details:
-    UUID
-    ID
-  Total queries made
-    Player Info:
-    Current Player's Turn
-    Player Names for both Black and White
-  Game Progress:
-    Current Move Number
-    Blue Move
-    Winrate
-    Individual Winrates for Black and White players
-    Value of the Last Move
-  Scoring:
-    Overall Score
-    Territory holdings for both Black and White
-    Score difference between players
-With each query to KataGo, the system broadcasts the detailed analysis specific to that game, ensuring all players and viewers are updated in real-time.
+1. Real-time Interaction: Experience immediate game updates after every move.
+
+2. Comprehensive Analysis: Stay informed at every game juncture with insights into:
+
+Game Details:
+
+UUID
+ID
+Total queries made
+
+Player Insights:
+
+Current Player's Turn
+Names for Black and White players
+
+Game Dynamics:
+
+Current Move Number
+Blue Move
+Overall Winrate
+Individual Winrates for Black and White
+Value of the Last Move
+
+Scoring Metrics:
+
+Game Score
+Territory allocations for Black and White
+Score differential between competitors
+
+Each interaction with KataGo results in the system dispatching a rich, game-specific analysis, assuring players and spectators are contemporaneously updated. Following this, the frontend client amends its visuals based on the broadcasted data. This ensures dynamic representation of critical metrics: for instance, the game board highlights the blue move with a distinct blue circle, and users can visualize game dynamics through the Winrate bar, Territory bar, Territory estimate, and a textual representation of the Score lead.
+
+Disclaimer:
+
+Designed with streamers and live streaming events at its core, BLA seeks to augment the live viewing experience through its real-time analytical offerings. We encourage individual users to leverage BLA, bearing in mind its intended primary application. When incorporating BLA into public broadcasts, we kindly ask for appropriate credits and acknowledgments.
