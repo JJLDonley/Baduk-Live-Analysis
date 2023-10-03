@@ -33,13 +33,6 @@ Harnessing the agility of the Express framework, BLA presents an interactive use
 
 Each interaction with KataGo results in the system dispatching a rich, game-specific analysis, assuring players and spectators are contemporaneously updated. Following this, the frontend client amends its visuals based on the broadcasted data. This ensures dynamic representation of critical metrics: for instance, the game board highlights the blue move with a distinct blue circle, and users can visualize game dynamics through the Winrate bar, Territory bar, Territory estimate, and a textual representation of the Score lead.
 
-## Installing Katago
-Go to the [KataGo release page](https://github.com/lightvector/KataGo/releases), find version 1.13.0, and choose `katago-v1.13.0-eigen-windows-x64+bs29.zip` (or your OS equivalent).
-
-Go to `https://katagotraining.org/networks/` and download the highlighted network file. 
-
-Copy the network file to your KataGo folder and update `_.json` in this repo to point to your files
-
 ## Running Katago
 ### Windows
 Run ` .\katago.exe benchmark -model default_model.bin.gz -config default_gtp.cfg` in the katago folder. It may take a while.
