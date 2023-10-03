@@ -149,17 +149,6 @@ const AIEXE = "./katago/katago.exe"
 const AICONFIG = "./katago/default_gtp.cfg"
 const AIMODEL = "./katago/default_model.bin.gz"
 const AI = new KataGo()
-const LETTERS = 'abcdefghijklmnopqrstuvwxyz'
-
-// helper functions
-
-const toLetterCoordinate = (number) => {
-    return LETTERS[number]
-}
-
-const toNumberCoordinate = (number) => {
-    return number + 1
-}
 
 const stringMovesToCoordinates = (moveString) => {
     if (typeof moveString !== 'string') {
@@ -456,19 +445,26 @@ const engineAnalysis = async (game) => {
 };
 
 const analyzeAIQuery = (queryResult) => {
-    const queryMap = {
-        currentPlayer: queryResult["rootInfo"]["currentPlayer"],
-        root: {
-            scoreLead: queryResult["rootInfo"]["scoreLead"],
-            winrate: queryResult["rootInfo"]["winrate"],
-        },
-        sent: queryResult["sent"],
-        moves: mapSuggestedAIMoves(queryResult["moveInfos"]),
-        ownerShipMap: setToGrid(queryResult["ownership"])
-    };
+    let queryMap; // Declare outside of try block
 
-    return queryMap;
+    try {
+        queryMap = {
+            currentPlayer: queryResult["rootInfo"]["currentPlayer"],
+            root: {
+                scoreLead: queryResult["rootInfo"]["scoreLead"],
+                winrate: queryResult["rootInfo"]["winrate"],
+            },
+            sent: queryResult["sent"],
+            moves: mapSuggestedAIMoves(queryResult["moveInfos"]),
+            ownerShipMap: setToGrid(queryResult["ownership"])
+        };
+        return queryMap;
+    } catch(err) {
+        console.log(err);
+    }
+ // Now it's available here
 };
+
 
 function setToGrid(ownership) {
     const size = 19;

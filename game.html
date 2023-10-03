@@ -27,7 +27,8 @@
         const eventName = `${type}/${id}`;
         console.log(eventName)
         socket.on(eventName, (data) => {
-            console.log(`Received data for ${eventName}:`, data);
+            const newData = JSON.parse(data)
+            console.log(`Received data for ${eventName}:`, newData);
             
             // You can update the UI or do other tasks based on the received data here
         });
