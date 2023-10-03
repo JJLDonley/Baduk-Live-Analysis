@@ -1,3 +1,6 @@
 /flood_fill_logs.json
 /gtp_logs
 /node_modules
+default_config.cfg
+katago/default_gtp.cfg
+katago/KataGoData/
