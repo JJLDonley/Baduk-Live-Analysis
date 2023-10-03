@@ -108,6 +108,9 @@ class KataGo {
                 try {
                     const response = JSON.parse(data.toString());
                     response["sent"] = query.moves
+                    if(!response["root"]["currentPlayer"]){
+                        console.log(response)
+                    }
                     resolve(response);
                 } catch (error) {
                     if (retries < maxRetries) {
@@ -148,7 +151,7 @@ const BES = new Server(HTTP_SERVER); // Using Server constructor backend server
 const OGS = io(URL, PARAMS); // OGS connection using 'io' 
 const GAMES = {};
 const AIEXE = "./katago/katago.exe"
-const AICONFIG = "./katago/default_gtp.cfg"
+const AICONFIG = "./katago/analysis.cfg"
 const AIMODEL = "./katago/default_model.bin.gz"
 const AI = new KataGo()
 
@@ -183,14 +186,14 @@ function formatGameMoveData(submission, moves, moveNumber = 0) {
             const formatedMoves = [];
             moves.forEach((move, index) => {
                 const color = index % 2 === 0 ? 'b' : 'w';
-                formatedMoves.push([color, move[0], move[1]]);
+                formatedMoves.push([color, move[0], move[1]+1]);
             });
             return formatedMoves;
         }
 
         case 'move': {
             const color = moveNumber % 2 == 0 ? 'b' : 'w'
-            const formatedMoves = [color, moves[0], moves[1]]
+            const formatedMoves = [color, moves[0], moves[1]+1]
             return formatedMoves
         }
     }
