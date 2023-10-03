@@ -48,7 +48,7 @@ Each interaction with KataGo results in the system dispatching a rich, game-spec
     ```bash
     katago.exe analysis -model <PATH_TO_NEURALNET>.bin.gz -config <PATH_TO_CONFIGURATION>.cfg
     ```
-    - Replace `<PATH_TO_NEURALNET>` and `<PATH_TO_CONFIGURATION>` with your specific paths.
+    - Replace `<NEURALNET>` and `<CONFIGURATION>` with your specific paths.
 
 3. **Automatic Analysis**:
    - Replace `<PATH_TO_NEURALNET>` and `<PATH_TO_CONFIGURATION>` with `default_model` and `default_config` for the program to run.
