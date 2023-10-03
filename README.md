@@ -51,7 +51,8 @@ Each interaction with KataGo results in the system dispatching a rich, game-spec
     - Replace `<PATH_TO_NEURALNET>` and `<PATH_TO_CONFIGURATION>` with your specific paths.
 
 3. **Automatic Analysis**:
-    > For a hands-free experience, this project is configured to run the analysis engine automatically.
+   - Replace `<PATH_TO_NEURALNET>` and `<PATH_TO_CONFIGURATION>` with `default_model` and `default_config` for the program to run.
+    > For a hands-free experience with katago, this project is configured to run the analysis engine automatically.
     ```bash
     npm start
     ```
