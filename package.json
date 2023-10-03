@@ -4,7 +4,8 @@
   "description": "",
   "main": "test.js",
   "scripts": {
-    "start": "node app.js"
+    "start": "node app.js",
+    "setup": "setup_katago.bat"
   },
   "author": "",
   "license": "ISC",
