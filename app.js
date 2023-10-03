@@ -27,7 +27,7 @@ class Queue {
             this.processing = false;
             return;
         }
-
+    
         this.processing = true;
         const { game, moves } = this.queue.shift();
         try {
@@ -35,8 +35,10 @@ class Queue {
         } catch (error) {
             console.error('Error processing query:', error);
         }
-        this.processNext();
+    
+        await this.processNext(); // Use 'await' here
     }
+    
 }
 
 class KataGo {
@@ -281,16 +283,6 @@ function setupOGSListeners(type, id) {
     if (GAMES[id] && GAMES[id].listenersSet) return;
 
     if (type === 'game') {
-        OGS.on('game/' + id + '/gamedata', data => {
-            const moves = formatGameStateData(type, data)
-            if (moves == undefined) {
-                console.log(`Game: ${GAMES[id].id} doesn't have moves yet`)
-                return
-            }
-            GAMES[id].totalQueries++;
-
-            AI.queue.process(GAMES[id], moves)
-        });
 
         OGS.on("game/" + id + "/move", (data) => {
             if (!data.move) { return }
@@ -302,16 +294,6 @@ function setupOGSListeners(type, id) {
         });
 
     } else if (type === 'review') {
-        OGS.on('review/' + id + '/full_state', data => {
-            const moves = formatGameStateData(type, data)
-            if (moves == undefined) {
-                console.log(`Game: ${GAMES[id].id} doesn't have moves yet`)
-                return
-            }
-            GAMES[id].totalQueries++;
-
-            AI.queue.process(GAMES[id], moves)
-        });
 
         OGS.on("review/" + id + "/r", (data) => {
             if (!data.m) { return }
@@ -326,9 +308,7 @@ function setupOGSListeners(type, id) {
     if (!GAMES[id]) GAMES[id] = {};
     GAMES[id].listenersSet = true;
 }
-
 // OGS game connection
-
 function connectLiveGame(type, id) {
     // Emit the required signals for connection
     switch (type) {
@@ -337,18 +317,38 @@ function connectLiveGame(type, id) {
                 'game_id': id,
                 'chat': false
             });
+
+            OGS.on('game/' + id + '/gamedata', data => {
+                const moves = formatGameStateData(type, data);
+                if (moves == undefined) {
+                    console.log(`Game: ${GAMES[id].id} doesn't have moves yet`);
+                    return;
+                }
+                GAMES[id].totalQueries++;
+                AI.queue.process(GAMES[id], moves);
+                setupOGSListeners(type, id);
+            });
             break;
         case 'review':
             OGS.emit('review/connect', {
                 'review_id': id,
                 'chat': false
             });
+
+            OGS.on('review/' + id + '/full_state', data => {
+                const moves = formatGameStateData(type, data)
+                if (moves == undefined) {
+                    console.log(`Game: ${GAMES[id].id} doesn't have moves yet`)
+                    return
+                }
+                GAMES[id].totalQueries++;
+    
+                AI.queue.process(GAMES[id], moves)
+            });
             break;
         default:
             return;
     }
-
-    setupOGSListeners(type, id);
 }
 
 // Express route
@@ -442,6 +442,8 @@ const engineAnalysis = async (game) => {
     } catch (err) {
         console.error('Error during engine analysis:', err);
     }
+
+    return true
 };
 
 const analyzeAIQuery = (queryResult) => {
