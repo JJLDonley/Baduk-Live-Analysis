@@ -33,13 +33,30 @@ Harnessing the agility of the Express framework, BLA presents an interactive use
 
 Each interaction with KataGo results in the system dispatching a rich, game-specific analysis, assuring players and spectators are contemporaneously updated. Following this, the frontend client amends its visuals based on the broadcasted data. This ensures dynamic representation of critical metrics: for instance, the game board highlights the blue move with a distinct blue circle, and users can visualize game dynamics through the Winrate bar, Territory bar, Territory estimate, and a textual representation of the Score lead.
 
-## Running Katago
-### Windows
-Run ` .\katago.exe benchmark -model default_model.bin.gz -config default_gtp.cfg` in the katago folder. It may take a while.
+## Setting Up KataGo
 
-Once it's finished, run ` .\katago.exe analysis -config default_gtp.cfg -model default_model.bin.gz`. Once it's running, you can close out and run the app.
+### On Windows:
 
-If you run into issues, you may need to update your `default_gtp.cfg` file. I had to update `numSearchThreads` to `1` and add `numAnalysisThreads = 2`
+1. **Initial Setup**:
+    > The provided KataGo in this project is a basic version. Before you start using it, generate a configuration file specific to your system.
+    ```bash
+    npm run setup
+    ```
+
+2. **Manual Analysis with KataGo**:
+    > If you wish to run KataGo's analysis engine manually, use the following command in the terminal:
+    ```bash
+    katago.exe analysis -model <PATH_TO_NEURALNET>.bin.gz -config <PATH_TO_CONFIGURATION>.cfg
+    ```
+    - Replace `<PATH_TO_NEURALNET>` and `<PATH_TO_CONFIGURATION>` with your specific paths.
+
+3. **Automatic Analysis**:
+    > For a hands-free experience, this project is configured to run the analysis engine automatically.
+    ```bash
+    npm start
+    ```
+    - Ensure you've already run `npm run setup` before the first use of `npm start`.
+
 
 ## Disclaimer
 
