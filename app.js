@@ -4,7 +4,8 @@ const io = require('socket.io-client');
 const http = require('http');
 const { v4: uuidv4 } = require('uuid');
 const { spawn } = require('child_process')
-const path = require('path')
+const path = require('path');
+const { writeFileSync, fstat } = require('fs');
 
 const PORT = 2468;
 const URL = 'https://online-go.com'; // OGS URL
@@ -77,9 +78,10 @@ class KataGo {
     }
 
     queryHash(moves, maxVisits) {
+        console.log(moves)
         let query = {
             "id": String(this.totalQueries),
-            "moves": moves.map(([color, x, y]) => [color, this.moveToString([x, y])]),
+            "moves": moves.map(([color, x, y]) => [color, `${x}${y}`]),
             "rules": 'chinese',
             "komi": 7.5,
             "boardXSize": 19,
@@ -88,6 +90,7 @@ class KataGo {
             "kata_analysis": true,
             "includeOwnership": true,
         }
+        console.log(query["moves"])
 
         if (maxVisits !== null) { query.maxVisits = maxVisits; }
 
@@ -106,15 +109,14 @@ class KataGo {
         return new Promise((resolve, reject) => {
             const tryParse = (data, retries = 0) => {
                 try {
-                    const response = JSON.parse(data.toString());
-                    response["sent"] = query.moves
-                    if(!response["root"]["currentPlayer"]){
-                        console.log(response)
-                    }
+                    const buffer = data;
+                    const jsonString = buffer.toString();
+                    const response = JSON.parse(jsonString);
                     resolve(response);
                 } catch (error) {
                     if (retries < maxRetries) {
                         console.warn('query: ', gameQueryID, `Error parsing JSON. Retrying... (${retries + 1}/${maxRetries})`);
+                        console.log(data.toString())
                         tryParse(data, retries + 1); // Recursive call
                     } else {
                         console.error('query: ', gameQueryID, ' Error parsing JSON. Max retries reached.');
@@ -151,11 +153,13 @@ const BES = new Server(HTTP_SERVER); // Using Server constructor backend server
 const OGS = io(URL, PARAMS); // OGS connection using 'io' 
 const GAMES = {};
 const AIEXE = "./katago/katago.exe"
-const AICONFIG = "./katago/analysis.cfg"
+const AICONFIG = "./katago/default_config.cfg"
 const AIMODEL = "./katago/default_model.bin.gz"
 const AI = new KataGo()
 
 const stringMovesToCoordinates = (moveString) => {
+    const letters = 'abcdefghjklmnopqrst'
+
     if (typeof moveString !== 'string') {
         console.error('Expected a string for moveString but received:', moveString);
         return [];
@@ -169,8 +173,9 @@ const stringMovesToCoordinates = (moveString) => {
     }
 
     const moves = pairs.map((pair, i) => {
-        const x = coordinates.indexOf(pair[0]);
-        const y = coordinates.indexOf(pair[1]); // subtract from 19 for correct row
+        const x_num = coordinates.indexOf(pair[0]);
+        const y = 19 - coordinates.indexOf(pair[1]); // subtract from 19 for correct row
+        const x = letters[x_num]
         const player = i % 2 === 0 ? 'b' : 'w'; // assume 'b' goes first
         return [player, x, y];
     });
@@ -181,19 +186,24 @@ const stringMovesToCoordinates = (moveString) => {
 // format moves
 
 function formatGameMoveData(submission, moves, moveNumber = 0) {
+    const letters = 'abcdefghjklmnopqrst'
     switch (submission) {
         case 'initial': {
             const formatedMoves = [];
             moves.forEach((move, index) => {
                 const color = index % 2 === 0 ? 'b' : 'w';
-                formatedMoves.push([color, move[0], move[1]+1]);
+                const x = letters[move[0]]
+                const y = 19 - move[1]
+                formatedMoves.push([color, x, y]);
             });
             return formatedMoves;
         }
 
         case 'move': {
             const color = moveNumber % 2 == 0 ? 'b' : 'w'
-            const formatedMoves = [color, moves[0], moves[1]+1]
+            const x = letters[moves[0]]
+            const y = 19 - moves[1]
+            const formatedMoves = [color, x, y]
             return formatedMoves
         }
     }
@@ -347,6 +357,7 @@ function connectLiveGame(type, id) {
                 GAMES[id].totalQueries++;
     
                 AI.queue.process(GAMES[id], moves)
+                setupOGSListeners(type, id);
             });
             break;
         default:
@@ -491,10 +502,10 @@ function setToGrid(ownership) {
 
 const mapSuggestedAIMoves = (suggestedMoves) => {
     return suggestedMoves
-        .sort((a, b) => b["lcb"] - a["lcb"])  // Sort by descending order of lcb
+        .sort((a, b) => b["order"] - a["order"])  // Sort by descending order of lcb
         .map(move => [
             move["move"],
-            move["lcb"],
+            move["order"],
             move["prior"],
             move["pv"]
         ]);
@@ -612,7 +623,7 @@ function updateGameAndEmit(game) {
         data: game,
     };
     
-    GAMES[game.id] = game
+    GAMES[game.id].evaluation = game.evaluation
 
     BES.emit(gameEmitID, JSON.stringify(payload));
 }
