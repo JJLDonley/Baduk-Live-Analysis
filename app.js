@@ -78,7 +78,6 @@ class KataGo {
     }
 
     queryHash(moves, maxVisits) {
-        console.log(moves)
         let query = {
             "id": String(this.totalQueries),
             "moves": moves.map(([color, x, y]) => [color, `${x}${y}`]),
@@ -90,7 +89,6 @@ class KataGo {
             "kata_analysis": true,
             "includeOwnership": true,
         }
-        console.log(query["moves"])
 
         if (maxVisits !== null) { query.maxVisits = maxVisits; }
 
@@ -398,6 +396,7 @@ BES.on('connection', (socket) => {
 
     socket.on('disconnect', () => {
         console.log('Frontend client disconnected');
+        OGS.off('game/')
     });
 });
 
