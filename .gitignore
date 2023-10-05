@@ -3,4 +3,4 @@
 /node_modules
 katago/default_gtp.cfg
 katago/KataGoData/
-/analysis_logs
+analysis_logs/
