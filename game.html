@@ -1,21 +1,145 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Game Page</title>
+    <title id="title">Game Page</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    </style>
 </head>
+
 <body>
-    <h1>Game Page</h1>
-    <p>Status: <span id="status">Not Connected</span></p>
+    <div id="container" style="width: 800px; margin: 0 auto;">
+        <div id="player-name-container" style="display: flex; justify-content: space-between; width: 800px;">
+            <div id="black-player-name" style="font-size: 24px; color: #E0E0E0; padding-left: 20px;">Black Player</div>
+            <div id="white-player-name" style="font-size: 24px; color: #E0E0E0; padding-right: 20px;">White Player</div>
+        </div>
+        
+        
+        
+        <div id="board-container" style="width: 800px; height: 800px; margin-bottom: 20px;">
+            <canvas id="board" width="800" height="800"></canvas>
+        </div>
+
+        <!-- Winrate Bargraph -->
+        <div id="winrate-bargraph-container"
+            style="width: 100%; height: 30px; background-color: white; position: relative; margin-bottom: 10px; border: 1px solid grey;">
+            <div id="winrate-black" style="display: inline-block; height: 30px; width: 50%; background-color: black;">
+            </div>
+            <div id="winrate-white" style="display: inline-block; height: 30px; width: 50%; background-color: white;">
+            </div>
+
+            <!-- Winrate Numbers -->
+            <div id="winrate-black-text" style="position: absolute; left: 5%; bottom: 5px; color: white;">B: 50%</div>
+            <div id="winrate-white-text" style="position: absolute; right: 5%; bottom: 5px; color: black;">W: 50%</div>
+        </div>
+
+        <!-- Territory Bargraph -->
+        <div id="territory-bargraph-container"
+            style="width: 100%; height: 30px; background-color: white; position: relative; border: 1px solid grey;">
+            <div id="territory-black" style="display: inline-block; height: 30px; width: 50%; background-color: black;">
+            </div>
+            <div id="territory-white" style="display: inline-block; height: 30px; width: 50%; background-color: white;">
+            </div>
+
+            <!-- Territory Numbers -->
+            <div id="territory-black-text" style="position: absolute; left: 5%; bottom: 5px; color: white;">B: 27pts
+            </div>
+            <div id="territory-white-text" style="position: absolute; right: 5%; bottom: 5px; color: black;">W: 27pts
+            </div>
+        </div>
+
+
+    </div>
+
+
 
     <script>
-        const socket = io('http://localhost:2468'); // Assuming your BES server is running on port 3000
+        const socket = io('http://localhost:2468');
+        const canvas = document.getElementById('board');
+        const ctx = canvas.getContext('2d');
+
+        // Double the internal size of the canvas
+        canvas.width = 1600;
+        canvas.height = 1600;
+
+        // But keep the display size
+        canvas.style.width = '800px';
+        canvas.style.height = '800px';
+
+        // Now you need to scale the drawing context
+        ctx.scale(2, 2);
+
+        function drawBoard(moves) {
+            const padding = 20;
+            const boardSize = 800;
+            const cellSize = boardSize / 19;
+            const totalSize = boardSize + 2 * padding;  // Total canvas size including padding
+            const letters = 'ABCDEFGHJKLMNOPQRST';
+            // Draw background
+            ctx.fillStyle = '#FFCC66';  // This is a light brown color
+            ctx.fillRect(0, 0, totalSize, totalSize);
+
+            // Draw lines centered with padding
+            for (let i = 0; i < 19; i++) {
+                ctx.beginPath();
+
+                // Horizontal Lines
+                ctx.moveTo(padding, padding + i * cellSize);
+                ctx.lineTo(boardSize - padding - 2, padding + i * cellSize);
+
+                // Vertical Lines
+                ctx.moveTo(padding + i * cellSize, padding);
+                ctx.lineTo(padding + i * cellSize, boardSize - padding - 2);
+
+                ctx.strokeStyle = '#000';
+                ctx.stroke();
+
+                ctx.font = '16px Arial';  // You can adjust the font size and style as needed
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = '#000';  // Text color
+                // Add letter labels for horizontal lines
+                ctx.fillText(letters.charAt(i), padding + i * cellSize, boardSize - padding + 10); // The '-4' and '+15' are offsets to position the letters correctly
+                // Add number labels for vertical lines (from 19 down to 1)
+                ctx.fillText(String(19 - i), 8, padding + i * cellSize);  // The '4' offsets are to position the numbers correctly
+            }
+
+            // Draw moves
+            moves.forEach(move => {
+                const [x, y, color] = move;  // Assuming moves are structured as [x,y,color]
+
+                ctx.beginPath();
+                ctx.arc(padding + x * cellSize, padding + y * cellSize, cellSize / 1.65 - 5, 0, Math.PI * 2, false); // Minus 5 for a little padding
+
+                if (color === 'b') {
+                    ctx.fillStyle = 'black';
+                    ctx.strokeStyle = 'black'
+                    ctx.lineWidth = 2
+                    ctx.stroke()
+                } else if (color === 'w') {
+                    ctx.strokeStyle = 'black'
+                    ctx.lineWidth = 2
+                    ctx.stroke()
+                    ctx.fillStyle = 'white';
+                } else if (color === 'a') {
+                    ctx.fillStyle = 'lightblue';
+                    ctx.strokeStyle = 'black'
+                    ctx.lineWidth = 2
+                    ctx.stroke()
+                }
+
+                ctx.fill();
+            });
+        }
+
 
         socket.on('connect', () => {
             document.getElementById('status').textContent = 'Connected';
         });
+
+        socket.on('error', (err)=>{console.log(err)})
 
         socket.on('disconnect', () => {
             document.getElementById('status').textContent = 'Disconnected';
@@ -26,12 +150,40 @@
         const id = pathSegments[2];
         const eventName = `${type}/${id}`;
         console.log(eventName)
+        document.getElementById('title').textContent = eventName
+
+        drawBoard([[15, 3, "b"], [15, 2, "w"], [3, 3, "a"]])
+
         socket.on(eventName, (data) => {
-            const newData = JSON.parse(data)
+            const newData = JSON.parse(data);
             console.log(`Received data for ${eventName}:`, newData);
-            
-            // You can update the UI or do other tasks based on the received data here
+
+            const evaluation = newData.evaluation;
+            const percent = evaluation.percent;
+            const territory = evaluation.territory;
+
+            // Update Winrate bargraph
+            const winrateBlackPercentage = parseFloat(percent.black);
+            document.getElementById('winrate-black').style.width = winrateBlackPercentage + '%';
+            document.getElementById('winrate-black').style.backgroundColor = 'black';
+
+            // Update Territory bargraph
+            const totalTerritory = territory.black + territory.white;
+            const territoryBlackPercentage = (territory.black / totalTerritory) * 100;
+            document.getElementById('territory-black').style.width = territoryBlackPercentage + '%';
+            document.getElementById('territory-black').style.backgroundColor = 'black';
+
+            // Update Winrate numbers
+            document.getElementById('winrate-black-text').textContent = percent.black;
+            document.getElementById('winrate-white-text').textContent = percent.white;
+
+            // Update Territory numbers
+            document.getElementById('territory-black-text').textContent = territory.black;
+            document.getElementById('territory-white-text').textContent = territory.white;
         });
+
+
     </script>
 </body>
+
 </html>
