@@ -63,6 +63,31 @@ Choose between `Eigen-windows` for your CPU KataGo, commands are all the same, s
     ```
     - Ensure you've already run `npm run setup` before the first use of `npm start`.
 
+## Linux
+* Worked: t2.2xlarge
+* Did not work: t2.micro
+
+### libzip5
+`wget http://mirrors.kernel.org/ubuntu/pool/universe/libz/libzip/libzip5_1.5.1-0ubuntu1_amd64.deb`
+`sudo apt install ./libzip5_1.5.1-0ubuntu1_amd64.deb`
+
+### KataGo
+`wget https://github.com/lightvector/KataGo/releases/download/v1.13.0/katago-v1.13.0-eigen-linux-x64.zip`
+
+### git
+`sudo apt install git-all`
+`git clone https://github.com/WeiQiPro/Baduk-Live-Analysis.git`
+
+### npm
+`sudo apt install npm`
+
+### process
+* Once you unzip the KataGo folder, rename the unzipped folder to `katago-linux` and then move it to the `Baduk-Live-Analysis` repo
+* Go into the `katago` folder and copy the `default_config.cfg` and `default_model.bin.gz` file to the `katago-linux` folder
+* Run the app using the command `npm run start/linux`
+* Once the app is running, use one of the public IP addresses, but change the protocol to `http` (from `https`) and add the port number (`2468`)
+
+Note: Haven't tested, but may need to change instances of `localhost` to `0.0.0.0`
 
 ## Disclaimer
 
