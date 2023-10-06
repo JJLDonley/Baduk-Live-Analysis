@@ -5,7 +5,8 @@
   "main": "test.js",
   "scripts": {
     "start": "node app.js",
-    "setup": "setup_katago.bat"
+    "setup": "setup_katago.bat",
+    "start/linux": "IS_LINUX=true node app.js"
   },
   "author": "",
   "license": "ISC",
