@@ -23,6 +23,7 @@
     </div>
 
     <script>
+        const GameData = []
         const socket = io('http://localhost:2468');
         const gobanVisual = document.getElementById('board');
         const gobaContext = gobanVisual.getContext('2d');
@@ -162,6 +163,7 @@
             updateBoardvisual(boardData)
             updateEvaluations(evaluations)
 
+            GameData.push(newData)
         });
 
 
