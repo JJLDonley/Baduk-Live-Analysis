@@ -84,6 +84,7 @@ Choose between `Eigen-windows` for your CPU KataGo, commands are all the same, s
 ### process
 * Once you unzip the KataGo folder, rename the unzipped folder to `katago-linux` and then move it to the `Baduk-Live-Analysis` repo
 * Go into the `katago` folder and copy the `default_config.cfg` and `default_model.bin.gz` file to the `katago-linux` folder
+* Run the app using the command `npm run start/linux`
 * Once the app is running, use one of the public IP addresses, but change the protocol to `http` (from `https`) and add the port number (`2468`)
 
 Note: Haven't tested, but may need to change instances of `localhost` to `0.0.0.0`
