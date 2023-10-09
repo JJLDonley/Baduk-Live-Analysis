@@ -92,3 +92,7 @@ Note: Haven't tested, but may need to change instances of `localhost` to `0.0.0.
 ## Disclaimer
 
 Designed with streamers and live streaming events at its core, BLA seeks to augment the live viewing experience through its real-time analytical offerings. We encourage individual users to leverage BLA, bearing in mind its intended primary application. When incorporating BLA into public broadcasts, we kindly ask for appropriate credits and acknowledgments.
+
+## Credit
+
+` Quentin Rendu, Leo Wagner, Katie Oh, Devin Fraze, Jeremiah Donley `
