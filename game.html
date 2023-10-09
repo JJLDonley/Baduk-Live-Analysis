@@ -11,8 +11,8 @@
 
 <body>
     <div id="infomation-container">
-                    <canvas id="infomation" width="800" height="100"></canvas>
-    </div> 
+        <canvas id="infomation" width="800" height="100"></canvas>
+    </div>
     <div id="board-container" style="width: 800px; height: 800px; margin-bottom: 20px;">
         <canvas id="board" width="800" height="800"></canvas>
     </div>
@@ -59,70 +59,69 @@
         confContext.scale(2, 2);
         infoContext.scale(2, 2);
 
-        function drawBoard(moves) {
+        function drawBoard(moves, lastMove) {
             const padding = 20;
             const boardSize = 800;
             const cellSize = boardSize / 19;
             const totalSize = boardSize + 2 * padding;  // Total canvas size including padding
             const letters = 'ABCDEFGHJKLMNOPQRST';
             // Draw background
-            ctx.fillStyle = '#FFCC66';  // This is a light brown color
-            ctx.fillRect(0, 0, totalSize, totalSize);
+            gobaContext.fillStyle = '#FFCC66';  // This is a light brown color
+            gobaContext.fillRect(0, 0, totalSize, totalSize);
 
             // Draw lines centered with padding
             for (let i = 0; i < 19; i++) {
-                ctx.beginPath();
+                gobaContext.beginPath();
 
                 // Horizontal Lines
-                ctx.moveTo(padding, padding + i * cellSize);
-                ctx.lineTo(boardSize - padding - 2, padding + i * cellSize);
+                gobaContext.moveTo(padding, padding + i * cellSize);
+                gobaContext.lineTo(boardSize - padding - 2, padding + i * cellSize);
 
                 // Vertical Lines
-                ctx.moveTo(padding + i * cellSize, padding);
-                ctx.lineTo(padding + i * cellSize, boardSize - padding - 2);
+                gobaContext.moveTo(padding + i * cellSize, padding);
+                gobaContext.lineTo(padding + i * cellSize, boardSize - padding - 2);
 
-                ctx.strokeStyle = '#000';
-                ctx.stroke();
+                gobaContext.strokeStyle = '#000';
+                gobaContext.stroke();
 
-                ctx.font = '16px Arial';  // You can adjust the font size and style as needed
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillStyle = '#000';  // Text color
+                gobaContext.font = '16px Arial';  // You can adjust the font size and style as needed
+                gobaContext.textAlign = 'center';
+                gobaContext.textBaseline = 'middle';
+                gobaContext.fillStyle = '#000';  // Text color
                 // Add letter labels for horizontal lines
-                ctx.fillText(letters.charAt(i), padding + i * cellSize, boardSize - padding + 10); // The '-4' and '+15' are offsets to position the letters correctly
+                gobaContext.fillText(letters.charAt(i), padding + i * cellSize, boardSize - padding + 10); // The '-4' and '+15' are offsets to position the letters correctly
                 // Add number labels for vertical lines (from 19 down to 1)
-                ctx.fillText(String(19 - i), 8, padding + i * cellSize);  // The '4' offsets are to position the numbers correctly
+                gobaContext.fillText(String(19 - i), 8, padding + i * cellSize);  // The '4' offsets are to position the numbers correctly
             }
 
-            // Draw moves
-            moves.forEach(move => {
-                const [x, y, color] = move;  // Assuming moves are structured as [x,y,color]
+            const stoneRadius = cellSize / 1.65 - 5;
 
-                ctx.beginPath();
-                ctx.arc(padding + x * cellSize, padding + y * cellSize, cellSize / 1.65 - 5, 0, Math.PI * 2, false); // Minus 5 for a little padding
+            for (let y = 0; y < 19; y++) {
+                for (let x = 0; x < 19; x++) {
+                    const color = moves[y][x];
+                    if (color === '') continue;  // skip empty intersections
 
-                if (color === 'b') {
-                    ctx.fillStyle = 'black';
-                    ctx.strokeStyle = 'black'
-                    ctx.lineWidth = 2
-                    ctx.stroke()
-                } else if (color === 'w') {
-                    ctx.strokeStyle = 'black'
-                    ctx.lineWidth = 2
-                    ctx.stroke()
-                    ctx.fillStyle = 'white';
-                } else if (color === 'a') {
-                    ctx.fillStyle = 'lightblue';
-                    ctx.strokeStyle = 'black'
-                    ctx.lineWidth = 2
-                    ctx.stroke()
+                    gobaContext.beginPath();
+                    gobaContext.arc(padding + x * cellSize, padding + y * cellSize, stoneRadius, 0, Math.PI * 2, false);
+
+                    gobaContext.strokeStyle = 'black';
+                    gobaContext.lineWidth = 2;
+
+                    if (color === 'b') {
+                        gobaContext.fillStyle = 'black';
+                    } else if (color === 'w') {
+                        gobaContext.fillStyle = 'white';
+                    } else if (color === 'a') {
+                        gobaContext.fillStyle = 'lightblue';
+                    }
+
+                    gobaContext.fill();
+                    gobaContext.stroke();
                 }
-
-                ctx.fill();
-            });
+            }
         }
 
-        function updateEvaluations(evaluations){
+        function updateEvaluations(evaluations) {
             const evalConfidence = evaluations.confidence
             const winrate = evaluations.winrate
             const territory = evaluations.territory
@@ -136,7 +135,6 @@
 
 
         socket.on('connect', () => {
-            document.getElementById('status').textContent = 'Connected';
         });
 
         socket.on('error', (err) => { console.log(err) })
@@ -152,18 +150,11 @@
         console.log(eventName)
         document.getElementById('title').textContent = eventName
 
-        drawBoard([[15, 3, "b"], [15, 2, "w"], [3, 3, "a"]])
+        socket.on(eventName, (gameData) => {
+            const jsonData = JSON.parse(gameData);
+            const data = jsonData.data
 
-        socket.on(eventName, (data) => {
-            const newData = JSON.parse(data);
-            console.log(`Received data for ${eventName}:`, newData);
-            const boardData = newData.board
-            const evaluations = newData.evaluation
-
-            updateBoardvisual(boardData)
-            updateEvaluations(evaluations)
-
-            GameData.push(newData)
+            console.log(data)
         });
 
 
