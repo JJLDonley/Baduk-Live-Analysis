@@ -79,7 +79,7 @@ class GameEntity {
         this.lead = this.determineLead()
 
         // ai winrate
-        this.ai.winrate.previous = this.ai.winrate.current || 60
+        this.ai.winrate.previous = this.ai.winrate.current
         this.ai.winrate.current = Math.round(query["rootInfo"]["winrate"] * 100)
         this.last.value = this.calculateLastMoveValue()
 
@@ -92,17 +92,15 @@ class GameEntity {
         // ai suggested moves
 
         this.ai.moves = this.sortAIQueryMoves(query["moveInfos"])
-        this.ai.blue = this.aiMoveToArrayCoordinates(this.ai.moves[0])
-        this.ai.green = this.aiMoveToArrayCoordinates(this.ai.moves[1])
-        this.ai.yellow = this.aiMoveToArrayCoordinates(this.ai.moves[2])
-        console.log(this.ai.blue)
+        this.ai.blue = this.aiMoveToArrayCoordinates(this.ai.moves[0], 'blue')
+        this.ai.green = this.aiMoveToArrayCoordinates(this.ai.moves[1], 'yellow')
+        this.ai.yellow = this.aiMoveToArrayCoordinates(this.ai.moves[2], 'green')
 
         this.state = this.board.state(this.moves)
     }
 
-    aiMoveToArrayCoordinates(aiMove) {
+    aiMoveToArrayCoordinates(aiMove, color) {
         const move = aiMove[0];
-        const color = this.current.player;
         const letters = 'ABCDEFGHJKLMNOPQRST';
 
         // Splitting the move into letter and number parts
@@ -246,7 +244,7 @@ class GameEntity {
     }
 
     sortAIQueryMoves(aiMoves) {
-        return aiMoves.sort((a, b) => b["order"] - a["order"]).map(move => [move["move"], move["order"]]);
+        return aiMoves.sort((b, a) => b["order"] - a["order"]).map(move => [move["move"], move["order"]]);
     }
 
     data() {
