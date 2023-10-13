@@ -90,29 +90,44 @@ class GameEntity {
         this.ai.ownership = query["ownership"]
         this.ai.confidence = this.confidenceOwnershipMap()
         // ai suggested moves
+
         this.ai.moves = this.sortAIQueryMoves(query["moveInfos"])
-        this.ai.blue = this.ai.moves[0]
-        this.ai.green = this.ai.moves[1]
-        this.ai.yellow = this.ai.moves[2]
+        this.ai.blue = this.aiMoveToArrayCoordinates(this.ai.moves[0])
+        this.ai.green = this.aiMoveToArrayCoordinates(this.ai.moves[1])
+        this.ai.yellow = this.aiMoveToArrayCoordinates(this.ai.moves[2])
+        console.log(this.ai.blue)
 
         this.state = this.board.state(this.moves)
     }
 
+    aiMoveToArrayCoordinates(aiMove) {
+        const move = aiMove[0];
+        const color = this.current.player;
+        const letters = 'ABCDEFGHJKLMNOPQRST';
+
+        // Splitting the move into letter and number parts
+        const letterPart = move.match(/[a-z]+/i)[0];
+        const numberPart = parseInt(move.match(/\d+/)[0]);
+
+        const x = letters.indexOf(letterPart);
+        const y = 19 - numberPart;  // Adjust for array's 0-based indexing
+
+        return [color, x, y];
+    }
+
+
     lastMoveToArrayCoordinates() {
-        const move = this.last.move
-        const color = move[0]
+        const move = this.last.move;
+        const color = move[0];
         const letters = 'abcdefghjklmnopqrst';
 
-        // Initially, get the x and y as you do:
-        const initialX = letters.indexOf(move[1]);
-        const initialY = move[2] - 1;
+        // Get the x and y:
+        const x = letters.indexOf(move[1]);
+        const y = 19 - move[2];  // Adjust for array's 0-based indexing
 
-        // Swap x and y and then mirror the new x across the board's center:
-        const y = initialX;
-        const x = 19 - 1 - initialY;
-
-        this.last.move = [color, x, y]
+        this.last.move = [color, x, y];
     }
+
 
     calculateHumanWinRate() {
         // euler constant
@@ -282,6 +297,10 @@ class GameEntity {
                     black: this.player.black.winrate,
                     white: this.player.white.winrate
                 }
+            },
+            ai: {
+                colors: [this.ai.blue, this.ai.green, this.ai.yellow],
+                moves: this.ai.moves
             }
         }
 
@@ -298,7 +317,7 @@ class Board {
 
     playMove(move) {
         const color = move[0]
-        const oppositeColor = color === 'B' ? 'W' : 'B';
+        const oppositeColor = color === 'b' ? 'w' : 'b';
 
         const letters = 'abcdefghjklmnopqrst';
 

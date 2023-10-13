@@ -228,6 +228,20 @@ function connectLiveGame(type, id) {
 APP.get('/:type/:id', (req, res) => {
     let type = req.params.type;
     const id = req.params.id;
+
+    if(GAMES[id]) {
+        console.log('Game already exist... sending data')
+        const game = GAMES[id]
+        const gameEmitID = `${game.type}/${game.id}`
+
+        const payload = {
+            type: gameEmitID,
+            data: game.data(),
+        };
+        console.log('Emitted: ' + gameEmitID)
+        BES.emit(gameEmitID, JSON.stringify(payload))
+    }
+
     // Validate the type
     if (!['game', 'demo', 'review'].includes(type)) {
         return res.status(400).send('Error: Not a proper type.');
