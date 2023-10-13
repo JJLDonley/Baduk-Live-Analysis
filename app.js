@@ -229,19 +229,6 @@ APP.get('/:type/:id', (req, res) => {
     let type = req.params.type;
     const id = req.params.id;
 
-    if(GAMES[id]) {
-        console.log('Game already exist... sending data')
-        const game = GAMES[id]
-        const gameEmitID = `${game.type}/${game.id}`
-
-        const payload = {
-            type: gameEmitID,
-            data: game.data(),
-        };
-        console.log('Emitted: ' + gameEmitID)
-        BES.emit(gameEmitID, JSON.stringify(payload))
-    }
-
     // Validate the type
     if (!['game', 'demo', 'review'].includes(type)) {
         return res.status(400).send('Error: Not a proper type.');
@@ -250,7 +237,9 @@ APP.get('/:type/:id', (req, res) => {
     // If type is 'demo', change it to 'review'
     if (type === 'demo') type = 'review';
 
-    connectLiveGame(type, id);
+    if(!GAMES[id]) {
+        connectLiveGame(type, id);
+    }
 
     res.sendFile(path.join(__dirname, 'game.html'));
 });
@@ -261,11 +250,20 @@ APP.get('/', (req, res) => {
 
 BES.on('connection', (socket) => {
     console.log('Frontend client connected');
-
-    socket.on('subscribe', (gameId) => {
-        // Send game data if available in GAMES hashmap
-        if (GAMES[gameId]) {
-            socket.emit(`${GAMES[gameId].type}/${GAMES[gameId].id}`, GAMES[gameId]);
+    
+    socket.on('subscribe', (data) => {
+        const id = data.id
+        if(GAMES[id] && GAMES[id].queries >= 1) {
+            console.log('Game already exist... sending data')
+            const game = GAMES[id]
+            const gameEmitID = `${game.type}/${game.id}`
+    
+            const payload = {
+                type: gameEmitID,
+                data: game.data(),
+            };
+            console.log('Emitted: ' + gameEmitID)
+            BES.emit(gameEmitID, JSON.stringify(payload))
         }
     });
 
