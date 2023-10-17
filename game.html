@@ -1,473 +1,548 @@
 <!DOCTYPE html>
 <html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title id="title">Game Page</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
-    </style>
-</head>
-
-<body>
-    <div id="infomation-container">
-        <canvas id="infomation" width="800" height="100"></canvas>
-    </div>
-    <div id="board-container" style="width: 800px; height: 800px; margin-bottom: 20px;">
-        <canvas id="board" width="800" height="800"></canvas>
-    </div>
-    <div id="confidence-chart-container" style="width: 800px; height: 50px; margin-bottom: 20px;">
-        <canvas id="confidence-chart" width="800" height="50"></canvas>
-    </div>
-
-    </div>
-
-    <script>
-        // Constants and Variables
-        const GameData = [];
-        const socket = io('http://localhost:2468');
-        const elements = {
-            gobanVisual: document.getElementById('board'),
-            confidenceChart: document.getElementById('confidence-chart'),
-            playerInfo: document.getElementById('infomation')
-        };
-
-        const contexts = {
-            goban: elements.gobanVisual.getContext('2d'),
-            confidence: elements.confidenceChart.getContext('2d'),
-            info: elements.playerInfo.getContext('2d')
-        };
-
-        const BOARD_SETTINGS = {
-            padding: 20,
-            size: 800,
-            cellSize: 800 / 19,
-            letters: 'ABCDEFGHJKLMNOPQRST',
-            stoneRadiusFactor: 1.65
-        };
-
-        const CONFIDENCE_CONSTANTS = {
-            offset: 30,
-            rect: {
-                width: 368 * 2,
-                height: 50,
-                midpoint: 368 / 2,
-                radius: 15
-            },
-            brightness: [1, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1],
-            valueMultiplier: 2
-        };
-
-        // Utilities
-        function setupCanvas(element, width, height, styleWidth, styleHeight) {
-            element.width = width;
-            element.height = height;
-            element.style.width = styleWidth;
-            element.style.height = styleHeight;
-        }
-
-        function drawRoundedRect(ctx, x, y, width, height, radius) {
-            ctx.beginPath();
-            ctx.moveTo(x + radius, y);
-            ctx.lineTo(x + width - radius, y);
-            ctx.arc(x + width - radius, y + radius, radius, 1.5 * Math.PI, 2 * Math.PI);
-            ctx.lineTo(x + width, y + height - radius);
-            ctx.arc(x + width - radius, y + height - radius, radius, 0, 0.5 * Math.PI);
-            ctx.lineTo(x + radius, y + height);
-            ctx.arc(x + radius, y + height - radius, radius, 0.5 * Math.PI, Math.PI);
-            ctx.lineTo(x, y + radius);
-            ctx.arc(x + radius, y + radius, radius, Math.PI, 1.5 * Math.PI);
-            ctx.closePath();
-            ctx.stroke();
-        }
-
-        // Canvas setup
-        setupCanvas(elements.gobanVisual, 1600, 1600, '800px', '800px');
-        setupCanvas(elements.confidenceChart, 1600, 100, '800px', '50px');
-        setupCanvas(elements.playerInfo, 1600, 200, '800px', '100px');
-
-        Object.values(contexts).forEach(ctx => ctx.scale(2, 2));
-
-        function drawBoard({ moves, lastMove, aiMoves }) {
-            clearCanvas(contexts.goban);
-            drawBackground();
-            drawLines();
-            drawLabels();
-
-            if (moves.length == 0) return;
-
-            drawStones(moves);
-
-            if (lastMove) {
-                drawLastMove(lastMove);
-            }
-
-            drawAIMoves(aiMoves);
-        }
-
-        function clearCanvas(context) {
-            context.clearRect(0, 0, context.canvas.width, context.canvas.height);
-        }
-
-        function drawBackground() {
-            contexts.goban.fillStyle = '#FFCC66';
-            contexts.goban.fillRect(0, 0, BOARD_SETTINGS.size + 2 * BOARD_SETTINGS.padding, BOARD_SETTINGS.size + 2 * BOARD_SETTINGS.padding);
-        }
-
-        function drawLines() {
-            for (let i = 0; i < 19; i++) {
-                drawSingleLine(i);
-            }
-        }
-
-        function drawSingleLine(i) {
-            contexts.goban.beginPath();
-            contexts.goban.moveTo(BOARD_SETTINGS.padding, BOARD_SETTINGS.padding + i * BOARD_SETTINGS.cellSize);
-            contexts.goban.lineTo(BOARD_SETTINGS.size - BOARD_SETTINGS.padding - 2, BOARD_SETTINGS.padding + i * BOARD_SETTINGS.cellSize);
-            contexts.goban.moveTo(BOARD_SETTINGS.padding + i * BOARD_SETTINGS.cellSize, BOARD_SETTINGS.padding);
-            contexts.goban.lineTo(BOARD_SETTINGS.padding + i * BOARD_SETTINGS.cellSize, BOARD_SETTINGS.size - BOARD_SETTINGS.padding - 2);
-            contexts.goban.strokeStyle = '#000';
-            contexts.goban.stroke();
-        }
-
-        function drawLabels() {
-            contexts.goban.font = '16px Arial';
-            contexts.goban.textAlign = 'center';
-            contexts.goban.textBaseline = 'middle';
-            contexts.goban.fillStyle = '#000';
-            for (let i = 0; i < 19; i++) {
-                drawSingleLabel(i);
-            }
-        }
-
-        function drawSingleLabel(i) {
-            contexts.goban.fillText(BOARD_SETTINGS.letters.charAt(i), BOARD_SETTINGS.padding + i * BOARD_SETTINGS.cellSize, BOARD_SETTINGS.size - BOARD_SETTINGS.padding + 10);
-            contexts.goban.fillText(String(19 - i), 8, BOARD_SETTINGS.padding + i * BOARD_SETTINGS.cellSize);
-        }
-
-        function drawStones(moves) {
-            const stoneRadius = BOARD_SETTINGS.cellSize / BOARD_SETTINGS.stoneRadiusFactor - 5;
-
-            for (let y = 0; y < 19; y++) {
-                for (let x = 0; x < 19; x++) {
-                    const color = moves[y][x];
-                    if (color === '') continue;
-                    drawSingleStone(x, y, stoneRadius, color);
-                }
-            }
-        }
-
-        function drawSingleStone(x, y, radius, color) {
-            contexts.goban.beginPath();
-            contexts.goban.arc(BOARD_SETTINGS.padding + x * BOARD_SETTINGS.cellSize, BOARD_SETTINGS.padding + y * BOARD_SETTINGS.cellSize, radius, 0, Math.PI * 2, false);
-            contexts.goban.strokeStyle = 'black';
-            contexts.goban.lineWidth = 2;
-            switch (color) {
-                case 'b':
-                    contexts.goban.fillStyle = 'black';
-                    break;
-                case 'w':
-                    contexts.goban.fillStyle = 'white';
-                    break;
-            }
-            contexts.goban.fill();
-            contexts.goban.stroke();
-        }
-
-        function drawLastMove(last) {
-            const [unused, x, y] = last.move;
-            const percentage = last.value
-            // const color = percentage >= 15 ? "purple" : 8 < percentage < 15 ? "red" : 4 < percentage < 8 ? "yellow" : "green"
-            contexts.goban.beginPath();
-            contexts.goban.arc(BOARD_SETTINGS.padding + x * BOARD_SETTINGS.cellSize, BOARD_SETTINGS.padding + y * BOARD_SETTINGS.cellSize, 10, 0, Math.PI * 2, false);
-            contexts.goban.strokeStyle = "red";
-            contexts.goban.lineWidth = 4;
-            contexts.goban.stroke();
-        }
-
-        function drawAIMoves(aiMoves) {
-            const radius = BOARD_SETTINGS.cellSize / BOARD_SETTINGS.stoneRadiusFactor - 5
-            for (const [color, x, y] of aiMoves) {
-                contexts.goban.beginPath();
-                contexts.goban.arc(BOARD_SETTINGS.padding + x * BOARD_SETTINGS.cellSize, BOARD_SETTINGS.padding + y * BOARD_SETTINGS.cellSize, radius, 0, Math.PI * 2, false);
-                contexts.goban.strokeStyle = 'black';
-                contexts.goban.lineWidth = 2;
-                contexts.goban.stroke()
-                contexts.goban.fillStyle = color;
-                contexts.goban.fill();
-
-            }
-        }
-
-        function drawConfidence({ black, white }) {
-            const valueMultiplier = 2;
-            const offset = 30;
-            const rect = {
-                w: 368 * 2,
-                h: 50,
-                m: 368 / 2,
-                r: 15  // Radius for rounded corners
-            };
-            // const brightness = [1, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1];
-            const brightness = [1, 0.97, 0.95, 0.93];
-            let blackValuesTotals = 0;
-            let whiteValuesTotals = rect.w; // Initialize it to the end for white values 
-
-            // Draw Rounded Rect Function
-            function drawRoundedRect(x, y, width, height, radius) {
-                contexts.confidence.beginPath();
-                contexts.confidence.moveTo(x + radius, y);
-                contexts.confidence.lineTo(x + width - radius, y);
-                contexts.confidence.arc(x + width - radius, y + radius, radius, 1.5 * Math.PI, 2 * Math.PI);
-                contexts.confidence.lineTo(x + width, y + height - radius);
-                contexts.confidence.arc(x + width - radius, y + height - radius, radius, 0, 0.5 * Math.PI);
-                contexts.confidence.lineTo(x + radius, y + height);
-                contexts.confidence.arc(x + radius, y + height - radius, radius, 0.5 * Math.PI, Math.PI);
-                contexts.confidence.lineTo(x, y + radius);
-                contexts.confidence.arc(x + radius, y + radius, radius, Math.PI, 1.5 * Math.PI);
-                contexts.confidence.closePath();
-                contexts.confidence.stroke();
-            }
-
-            function drawBlackValues(values) {
-                values.forEach((value, index) => {
-                    const width = value * valueMultiplier;
-                    const height = 50;
-                    const color = blackColorFunc(index);
-                    contexts.confidence.fillStyle = `rgb(${color.r}, ${color.g}, ${color.b})`;
-                    contexts.confidence.fillRect((blackValuesTotals += width) - width + offset, 5, width, height - 10);
-                });
-            }
-
-            function drawWhiteValues(values) {
-                values.forEach((value, index) => {
-                    const width = value * valueMultiplier;
-                    const height = 50;
-                    const color = whiteColorFunc(index);
-                    contexts.confidence.fillStyle = `rgb(${color.r}, ${color.g}, ${color.b})`;
-                    contexts.confidence.fillRect((whiteValuesTotals -= width) + offset, 5, width, height - 10);
-                });
-            }
-
-            function write184() {
-                contexts.confidence.font = '20px Arial';
-                x = 368 - 35 + offset
-                contexts.confidence.fillStyle = 'rgba(50, 50, 50, 0.8)';
-                contexts.confidence.fillText(184, x, 40); // slight offset for inside text
-            }
-
-            function writeTotalScores(confidenceScore, inside, outside, color) {
-                contexts.confidence.font = '40px Arial';
-                let x;
-                if (color === 'black') {
-                    x = offset + 25; // 50 as an example offset, you can adjust it
-                    contexts.confidence.fillStyle = outside;
-                    contexts.confidence.fillText(confidenceScore, x + 3, 40);
-                    contexts.confidence.fillStyle = outside;
-                    contexts.confidence.fillText(confidenceScore, x - 3, 40);
-                    contexts.confidence.fillStyle = outside;
-                    contexts.confidence.fillText(confidenceScore, x, 40 - 3);
-                    contexts.confidence.fillStyle = outside;
-                    contexts.confidence.fillText(confidenceScore, x, 40 + 3);
-                    contexts.confidence.fillStyle = inside;
-                    contexts.confidence.fillText(confidenceScore, x, 40); // slight offset for inside text
-                } else if (color === 'white') {
-                    x = rect.w - offset - 25; // 50 as an example offset, you can adjust it
-                    contexts.confidence.fillStyle = outside;
-                    contexts.confidence.fillText(confidenceScore, x + 3, 40);
-                    contexts.confidence.fillStyle = outside;
-                    contexts.confidence.fillText(confidenceScore, x - 3, 40);
-                    contexts.confidence.fillStyle = outside;
-                    contexts.confidence.fillText(confidenceScore, x, 40 - 3);
-                    contexts.confidence.fillStyle = outside;
-                    contexts.confidence.fillText(confidenceScore, x, 40 + 3);
-                    contexts.confidence.fillStyle = inside;
-                    contexts.confidence.fillText(confidenceScore, x, 40); // slight offset for inside text
-                }
-            }
-
-            const blackColorFunc = (index) => ({
-                r: 255 * (1 - brightness[index]),
-                g: 255 * (1 - brightness[index]),
-                b: 255 * (1 - brightness[index])
-            });
-
-            const whiteColorFunc = (index) => ({
-                r: 255 * brightness[index],
-                g: 255 * brightness[index],
-                b: 255 * brightness[index]
-            });
-
-            write184();
-
-            // Draw Dotted Line
-            contexts.confidence.strokeStyle = 'black';
-            contexts.confidence.lineWidth = 2;
-            [0, 15, 30, 45].forEach(y => {
-                contexts.confidence.strokeRect(offset + 368, y, 5, 10);
-            });
-
-            // Draw Black and White values
-            drawBlackValues(black.values);
-            drawWhiteValues(white.values);
-
-
-            //draw rounded rectangle
-            contexts.confidence.strokeStyle = 'black';
-            contexts.confidence.lineWidth = 8;
-            drawRoundedRect(offset, 2.5, rect.w, rect.h - 5, rect.r);
-
-            writeTotalScores(black.points, 'black', 'white', 'black');
-            writeTotalScores(white.points, 'white', 'black', 'white');
-        }
-
-        function drawTerritory({ black, white }) {
-            const totalPoints = black.territory + white.territory
-            const blackWidth = 368 * 2 * (black.territory / totalPoints)
-            const whiteWidth = 368 * 2 * (white.territory / totalPoints)
-            const valueMultiplier = 2;
-            const offset = 30;
-            const rect = {
-                w: 368 * 2,
-                h: 50,
-                m: 368 / 2,
-                r: 5  // Radius for rounded corners
-            };
-            const brightness = [1, 0.97, 0.95, 0.93];
-
-            // Draw Rounded Rect Function
-            function drawRoundedRect(x, y, width, height, radius) {
-                contexts.confidence.beginPath();
-                contexts.confidence.moveTo(x + radius, y);
-                contexts.confidence.lineTo(x + width - radius, y);
-                contexts.confidence.arc(x + width - radius, y + radius, radius, 1.5 * Math.PI, 2 * Math.PI);
-                contexts.confidence.lineTo(x + width, y + height - radius);
-                contexts.confidence.arc(x + width - radius, y + height - radius, radius, 0, 0.5 * Math.PI);
-                contexts.confidence.lineTo(x + radius, y + height);
-                contexts.confidence.arc(x + radius, y + height - radius, radius, 0.5 * Math.PI, Math.PI);
-                contexts.confidence.lineTo(x, y + radius);
-                contexts.confidence.arc(x + radius, y + radius, radius, Math.PI, 1.5 * Math.PI);
-                contexts.confidence.closePath();
-                contexts.confidence.stroke();
-            }
-
-            function drawBlackBar(values) {
-                let totalValuesWidth = values.reduce((acc, val) => acc + val, 0);
-                let totalWidth = 0;
-
-                values.forEach((value, index) => {
-                    const width = (value / totalValuesWidth) * blackWidth;
-                    const height = 50;
-                    const color = blackColorFunc(index);
-                    contexts.confidence.fillStyle = `rgb(${color.r}, ${color.g}, ${color.b})`;
-                    contexts.confidence.fillRect(totalWidth + offset, 5, width, height - 10);
-                    totalWidth += width;
-                });
-            }
-
-            function drawWhiteBar(values) {
-                let totalValuesWidth = values.reduce((acc, val) => acc + val, 0);
-                let totalWidth = 0;
-
-                values.forEach((value, index) => {
-                    const width = (value / totalValuesWidth) * whiteWidth;
-                    const height = 50;
-                    const color = whiteColorFunc(index);
-                    contexts.confidence.fillStyle = `rgb(${color.r}, ${color.g}, ${color.b})`;
-                    contexts.confidence.fillRect(rect.w - totalWidth - width + offset, 5, width, height - 10);
-                    totalWidth += width;
-                });
-            }
-
-
-            const blackColorFunc = (index) => ({
-                r: 255 * (1 - brightness[index]),
-                g: 255 * (1 - brightness[index]),
-                b: 255 * (1 - brightness[index])
-            });
-
-            const whiteColorFunc = (index) => ({
-                r: 255 * brightness[index],
-                g: 255 * brightness[index],
-                b: 255 * brightness[index]
-            });
-
-            function writeTotalScores(confidenceScore, inside, outside, color) {
-                contexts.confidence.font = '40px Arial';
-                let x;
-                if (color === 'black') {
-                    x = offset + 25; // 50 as an example offset, you can adjust it
-                    contexts.confidence.fillStyle = outside;
-                    contexts.confidence.fillText(confidenceScore, x + 3, 40);
-                    contexts.confidence.fillStyle = outside;
-                    contexts.confidence.fillText(confidenceScore, x - 3, 40);
-                    contexts.confidence.fillStyle = outside;
-                    contexts.confidence.fillText(confidenceScore, x, 40 - 3);
-                    contexts.confidence.fillStyle = outside;
-                    contexts.confidence.fillText(confidenceScore, x, 40 + 3);
-                    contexts.confidence.fillStyle = inside;
-                    contexts.confidence.fillText(confidenceScore, x, 40); // slight offset for inside text
-                } else if (color === 'white') {
-                    x = rect.w - offset - 25; // 50 as an example offset, you can adjust it
-                    contexts.confidence.fillStyle = outside;
-                    contexts.confidence.fillText(confidenceScore, x + 3, 40);
-                    contexts.confidence.fillStyle = outside;
-                    contexts.confidence.fillText(confidenceScore, x - 3, 40);
-                    contexts.confidence.fillStyle = outside;
-                    contexts.confidence.fillText(confidenceScore, x, 40 - 3);
-                    contexts.confidence.fillStyle = outside;
-                    contexts.confidence.fillText(confidenceScore, x, 40 + 3);
-                    contexts.confidence.fillStyle = inside;
-                    contexts.confidence.fillText(confidenceScore, x, 40); // slight offset for inside text
-                }
-            }
-
-            drawBlackBar(black.values);
-            drawWhiteBar(white.values);
-
-            writeTotalScores(black.territory, 'black', 'white', 'black');
-            writeTotalScores(white.territory, 'white', 'black', 'white');
-
-            contexts.confidence.strokeStyle = 'black'
-            contexts.confidence.lineWidth = 4
-            drawRoundedRect(offset, 2.5, rect.w, rect.h - 5, rect.r);
-
-        }
-
-        function drawInfo({ winrate, players }) {
-            clearCanvas(contexts.info)
-
-
-        }
-
-        const pathSegments = window.location.pathname.split('/');
-        const type = pathSegments[1];
-        const id = pathSegments[2];
-        const eventName = `${type}/${id}`;
-        document.getElementById('title').textContent = eventName;
-
-        // Socket Event Handling
-        socket.on('connect', () => {
-            console.log('connected')
-            socket.emit('subscribe', { id: id })
-        });
-        socket.on('error', (err) => { console.log(err); });
-        socket.on('disconnect', () => {
-            document.getElementById('status').textContent = 'Disconnected';
-        });
-
-        socket.on(eventName, (gameData) => {
-            const jsonData = JSON.parse(gameData);
-            const data = jsonData.data;
-            console.log(data)
-            Object.values(contexts).forEach(context => clearCanvas(context))
-            drawBoard({ moves: data.state, lastMove: data.last, aiMoves: data.ai.colors });
-            // drawConfidence({ black: data.confidence.black, white: data.confidence.white }); 
-            drawTerritory({ black: data.confidence.black, white: data.confidence.white });
-            drawInfo({ winrate: data.winrate, players: data.players })
-        });
-
-    </script>
-</body>
-
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title id="title">Game Page</title>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+	</head>
+
+	<body>
+		<div id="infomation-container">
+			<canvas id="infomation" width="800" height="100"></canvas>
+		</div>
+		<div id="board-container" style="width: 800px; height: 800px; margin-bottom: 20px">
+			<canvas id="board" width="800" height="800"></canvas>
+		</div>
+		<div id="confidence-chart-container" style="width: 800px; height: 50px; margin-bottom: 20px">
+			<canvas id="confidence-chart" width="800" height="50"></canvas>
+		</div>
+
+		<script>
+			// Constants and Variables
+			const GameData = [];
+			const socket = io("http://localhost:2468");
+			const elements = {
+				gobanVisual: document.getElementById("board"),
+				confidenceChart: document.getElementById("confidence-chart"),
+				playerInfo: document.getElementById("infomation"),
+			};
+
+			const contexts = {
+				goban: elements.gobanVisual.getContext("2d"),
+				confidence: elements.confidenceChart.getContext("2d"),
+				info: elements.playerInfo.getContext("2d"),
+			};
+
+			const BOARD_SETTINGS = {
+				padding: 20,
+				size: 800,
+				cellSize: 800 / 19,
+				letters: "ABCDEFGHJKLMNOPQRST",
+				stoneRadiusFactor: 1.65,
+			};
+
+			const CONFIDENCE_CONSTANTS = {
+				offset: 30,
+				rect: {
+					width: 368 * 2,
+					height: 50,
+					midpoint: 368 / 2,
+					radius: 15,
+				},
+				brightness: [1, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1],
+				valueMultiplier: 2,
+			};
+
+			// Utilities
+			function setupCanvas(element, width, height, styleWidth, styleHeight) {
+				element.width = width;
+				element.height = height;
+				element.style.width = styleWidth;
+				element.style.height = styleHeight;
+			}
+
+			function drawRoundedRect(ctx, x, y, width, height, radius) {
+				ctx.beginPath();
+				ctx.moveTo(x + radius, y);
+				ctx.lineTo(x + width - radius, y);
+				ctx.arc(x + width - radius, y + radius, radius, 1.5 * Math.PI, 2 * Math.PI);
+				ctx.lineTo(x + width, y + height - radius);
+				ctx.arc(x + width - radius, y + height - radius, radius, 0, 0.5 * Math.PI);
+				ctx.lineTo(x + radius, y + height);
+				ctx.arc(x + radius, y + height - radius, radius, 0.5 * Math.PI, Math.PI);
+				ctx.lineTo(x, y + radius);
+				ctx.arc(x + radius, y + radius, radius, Math.PI, 1.5 * Math.PI);
+				ctx.closePath();
+				ctx.stroke();
+			}
+
+			// Canvas setup
+			setupCanvas(elements.gobanVisual, 1600, 1600, "800px", "800px");
+			setupCanvas(elements.confidenceChart, 1600, 100, "800px", "50px");
+			setupCanvas(elements.playerInfo, 1600, 200, "800px", "100px");
+
+			Object.values(contexts).forEach((ctx) => ctx.scale(2, 2));
+
+			function drawBoard({ moves, lastMove, aiMoves }) {
+				clearCanvas(contexts.goban);
+				drawBackground();
+				drawLines();
+				drawLabels();
+
+				if (moves.length == 0) return;
+
+				drawStones(moves);
+
+				if (lastMove) {
+					drawLastMove(lastMove);
+				}
+
+				drawAIMoves(aiMoves);
+			}
+
+			function clearCanvas(context) {
+				context.clearRect(0, 0, context.canvas.width, context.canvas.height);
+			}
+
+			function drawBackground() {
+				contexts.goban.fillStyle = "#FFCC66";
+				contexts.goban.fillRect(
+					0,
+					0,
+					BOARD_SETTINGS.size + 2 * BOARD_SETTINGS.padding,
+					BOARD_SETTINGS.size + 2 * BOARD_SETTINGS.padding,
+				);
+			}
+
+			function drawLines() {
+				for (let i = 0; i < 19; i++) {
+					drawSingleLine(i);
+				}
+			}
+
+			function drawSingleLine(i) {
+				contexts.goban.beginPath();
+				contexts.goban.moveTo(
+					BOARD_SETTINGS.padding,
+					BOARD_SETTINGS.padding + i * BOARD_SETTINGS.cellSize,
+				);
+				contexts.goban.lineTo(
+					BOARD_SETTINGS.size - BOARD_SETTINGS.padding - 2,
+					BOARD_SETTINGS.padding + i * BOARD_SETTINGS.cellSize,
+				);
+				contexts.goban.moveTo(
+					BOARD_SETTINGS.padding + i * BOARD_SETTINGS.cellSize,
+					BOARD_SETTINGS.padding,
+				);
+				contexts.goban.lineTo(
+					BOARD_SETTINGS.padding + i * BOARD_SETTINGS.cellSize,
+					BOARD_SETTINGS.size - BOARD_SETTINGS.padding - 2,
+				);
+				contexts.goban.strokeStyle = "#000";
+				contexts.goban.stroke();
+			}
+
+			function drawLabels() {
+				contexts.goban.font = "16px Arial";
+				contexts.goban.textAlign = "center";
+				contexts.goban.textBaseline = "middle";
+				contexts.goban.fillStyle = "#000";
+				for (let i = 0; i < 19; i++) {
+					drawSingleLabel(i);
+				}
+			}
+
+			function drawSingleLabel(i) {
+				contexts.goban.fillText(
+					BOARD_SETTINGS.letters.charAt(i),
+					BOARD_SETTINGS.padding + i * BOARD_SETTINGS.cellSize,
+					BOARD_SETTINGS.size - BOARD_SETTINGS.padding + 10,
+				);
+				contexts.goban.fillText(
+					String(19 - i),
+					8,
+					BOARD_SETTINGS.padding + i * BOARD_SETTINGS.cellSize,
+				);
+			}
+
+			function drawStones(moves) {
+				const stoneRadius = BOARD_SETTINGS.cellSize / BOARD_SETTINGS.stoneRadiusFactor - 5;
+
+				for (let y = 0; y < 19; y++) {
+					for (let x = 0; x < 19; x++) {
+						const color = moves[y][x];
+						if (color === "") continue;
+						drawSingleStone(x, y, stoneRadius, color);
+					}
+				}
+			}
+
+			function drawSingleStone(x, y, radius, color) {
+				contexts.goban.beginPath();
+				contexts.goban.arc(
+					BOARD_SETTINGS.padding + x * BOARD_SETTINGS.cellSize,
+					BOARD_SETTINGS.padding + y * BOARD_SETTINGS.cellSize,
+					radius,
+					0,
+					Math.PI * 2,
+					false,
+				);
+				contexts.goban.strokeStyle = "black";
+				contexts.goban.lineWidth = 2;
+				switch (color) {
+					case "b":
+						contexts.goban.fillStyle = "black";
+						break;
+					case "w":
+						contexts.goban.fillStyle = "white";
+						break;
+				}
+				contexts.goban.fill();
+				contexts.goban.stroke();
+			}
+
+			function drawLastMove(last) {
+				const [unused, x, y] = last.move;
+				const percentage = last.value;
+				// const color = percentage >= 15 ? "purple" : 8 < percentage < 15 ? "red" : 4 < percentage < 8 ? "yellow" : "green"
+				contexts.goban.beginPath();
+				contexts.goban.arc(
+					BOARD_SETTINGS.padding + x * BOARD_SETTINGS.cellSize,
+					BOARD_SETTINGS.padding + y * BOARD_SETTINGS.cellSize,
+					10,
+					0,
+					Math.PI * 2,
+					false,
+				);
+				contexts.goban.strokeStyle = "red";
+				contexts.goban.lineWidth = 4;
+				contexts.goban.stroke();
+			}
+
+			function drawAIMoves(aiMoves) {
+				const radius = BOARD_SETTINGS.cellSize / BOARD_SETTINGS.stoneRadiusFactor - 5;
+				for (const [color, x, y] of aiMoves) {
+					contexts.goban.beginPath();
+					contexts.goban.arc(
+						BOARD_SETTINGS.padding + x * BOARD_SETTINGS.cellSize,
+						BOARD_SETTINGS.padding + y * BOARD_SETTINGS.cellSize,
+						radius,
+						0,
+						Math.PI * 2,
+						false,
+					);
+					contexts.goban.strokeStyle = "black";
+					contexts.goban.lineWidth = 2;
+					contexts.goban.stroke();
+					contexts.goban.fillStyle = color;
+					contexts.goban.fill();
+				}
+			}
+
+			function drawConfidence({ black, white }) {
+				const valueMultiplier = 2;
+				const offset = 30;
+				const rect = {
+					w: 368 * 2,
+					h: 50,
+					m: 368 / 2,
+					r: 15, // Radius for rounded corners
+				};
+				// const brightness = [1, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1];
+				const brightness = [1, 0.97, 0.95, 0.93];
+				let blackValuesTotals = 0;
+				let whiteValuesTotals = rect.w; // Initialize it to the end for white values
+
+				// Draw Rounded Rect Function
+				function drawRoundedRect(x, y, width, height, radius) {
+					contexts.confidence.beginPath();
+					contexts.confidence.moveTo(x + radius, y);
+					contexts.confidence.lineTo(x + width - radius, y);
+					contexts.confidence.arc(
+						x + width - radius,
+						y + radius,
+						radius,
+						1.5 * Math.PI,
+						2 * Math.PI,
+					);
+					contexts.confidence.lineTo(x + width, y + height - radius);
+					contexts.confidence.arc(
+						x + width - radius,
+						y + height - radius,
+						radius,
+						0,
+						0.5 * Math.PI,
+					);
+					contexts.confidence.lineTo(x + radius, y + height);
+					contexts.confidence.arc(x + radius, y + height - radius, radius, 0.5 * Math.PI, Math.PI);
+					contexts.confidence.lineTo(x, y + radius);
+					contexts.confidence.arc(x + radius, y + radius, radius, Math.PI, 1.5 * Math.PI);
+					contexts.confidence.closePath();
+					contexts.confidence.stroke();
+				}
+
+				function drawBlackValues(values) {
+					values.forEach((value, index) => {
+						const width = value * valueMultiplier;
+						const height = 50;
+						const color = blackColorFunc(index);
+						contexts.confidence.fillStyle = `rgb(${color.r}, ${color.g}, ${color.b})`;
+						contexts.confidence.fillRect(
+							(blackValuesTotals += width) - width + offset,
+							5,
+							width,
+							height - 10,
+						);
+					});
+				}
+
+				function drawWhiteValues(values) {
+					values.forEach((value, index) => {
+						const width = value * valueMultiplier;
+						const height = 50;
+						const color = whiteColorFunc(index);
+						contexts.confidence.fillStyle = `rgb(${color.r}, ${color.g}, ${color.b})`;
+						contexts.confidence.fillRect(
+							(whiteValuesTotals -= width) + offset,
+							5,
+							width,
+							height - 10,
+						);
+					});
+				}
+
+				function write184() {
+					contexts.confidence.font = "20px Arial";
+					x = 368 - 35 + offset;
+					contexts.confidence.fillStyle = "rgba(50, 50, 50, 0.8)";
+					contexts.confidence.fillText(184, x, 40); // slight offset for inside text
+				}
+
+				function writeTotalScores(confidenceScore, inside, outside, color) {
+					contexts.confidence.font = "40px Arial";
+					let x;
+					if (color === "black") {
+						x = offset + 25; // 50 as an example offset, you can adjust it
+						contexts.confidence.fillStyle = outside;
+						contexts.confidence.fillText(confidenceScore, x + 3, 40);
+						contexts.confidence.fillStyle = outside;
+						contexts.confidence.fillText(confidenceScore, x - 3, 40);
+						contexts.confidence.fillStyle = outside;
+						contexts.confidence.fillText(confidenceScore, x, 40 - 3);
+						contexts.confidence.fillStyle = outside;
+						contexts.confidence.fillText(confidenceScore, x, 40 + 3);
+						contexts.confidence.fillStyle = inside;
+						contexts.confidence.fillText(confidenceScore, x, 40); // slight offset for inside text
+					} else if (color === "white") {
+						x = rect.w - offset - 25; // 50 as an example offset, you can adjust it
+						contexts.confidence.fillStyle = outside;
+						contexts.confidence.fillText(confidenceScore, x + 3, 40);
+						contexts.confidence.fillStyle = outside;
+						contexts.confidence.fillText(confidenceScore, x - 3, 40);
+						contexts.confidence.fillStyle = outside;
+						contexts.confidence.fillText(confidenceScore, x, 40 - 3);
+						contexts.confidence.fillStyle = outside;
+						contexts.confidence.fillText(confidenceScore, x, 40 + 3);
+						contexts.confidence.fillStyle = inside;
+						contexts.confidence.fillText(confidenceScore, x, 40); // slight offset for inside text
+					}
+				}
+
+				const blackColorFunc = (index) => ({
+					r: 255 * (1 - brightness[index]),
+					g: 255 * (1 - brightness[index]),
+					b: 255 * (1 - brightness[index]),
+				});
+
+				const whiteColorFunc = (index) => ({
+					r: 255 * brightness[index],
+					g: 255 * brightness[index],
+					b: 255 * brightness[index],
+				});
+
+				write184();
+
+				// Draw Dotted Line
+				contexts.confidence.strokeStyle = "black";
+				contexts.confidence.lineWidth = 2;
+				[0, 15, 30, 45].forEach((y) => {
+					contexts.confidence.strokeRect(offset + 368, y, 5, 10);
+				});
+
+				// Draw Black and White values
+				drawBlackValues(black.values);
+				drawWhiteValues(white.values);
+
+				//draw rounded rectangle
+				contexts.confidence.strokeStyle = "black";
+				contexts.confidence.lineWidth = 8;
+				drawRoundedRect(offset, 2.5, rect.w, rect.h - 5, rect.r);
+
+				writeTotalScores(black.points, "black", "white", "black");
+				writeTotalScores(white.points, "white", "black", "white");
+			}
+
+			function drawTerritory({ black, white }) {
+				const totalPoints = black.territory + white.territory;
+				const blackWidth = 368 * 2 * (black.territory / totalPoints);
+				const whiteWidth = 368 * 2 * (white.territory / totalPoints);
+				const valueMultiplier = 2;
+				const offset = 30;
+				const rect = {
+					w: 368 * 2,
+					h: 50,
+					m: 368 / 2,
+					r: 5, // Radius for rounded corners
+				};
+				const brightness = [1, 0.97, 0.95, 0.93];
+
+				// Draw Rounded Rect Function
+				function drawRoundedRect(x, y, width, height, radius) {
+					contexts.confidence.beginPath();
+					contexts.confidence.moveTo(x + radius, y);
+					contexts.confidence.lineTo(x + width - radius, y);
+					contexts.confidence.arc(
+						x + width - radius,
+						y + radius,
+						radius,
+						1.5 * Math.PI,
+						2 * Math.PI,
+					);
+					contexts.confidence.lineTo(x + width, y + height - radius);
+					contexts.confidence.arc(
+						x + width - radius,
+						y + height - radius,
+						radius,
+						0,
+						0.5 * Math.PI,
+					);
+					contexts.confidence.lineTo(x + radius, y + height);
+					contexts.confidence.arc(x + radius, y + height - radius, radius, 0.5 * Math.PI, Math.PI);
+					contexts.confidence.lineTo(x, y + radius);
+					contexts.confidence.arc(x + radius, y + radius, radius, Math.PI, 1.5 * Math.PI);
+					contexts.confidence.closePath();
+					contexts.confidence.stroke();
+				}
+
+				function drawBlackBar(values) {
+					let totalValuesWidth = values.reduce((acc, val) => acc + val, 0);
+					let totalWidth = 0;
+
+					values.forEach((value, index) => {
+						const width = (value / totalValuesWidth) * blackWidth;
+						const height = 50;
+						const color = blackColorFunc(index);
+						contexts.confidence.fillStyle = `rgb(${color.r}, ${color.g}, ${color.b})`;
+						contexts.confidence.fillRect(totalWidth + offset, 5, width, height - 10);
+						totalWidth += width;
+					});
+				}
+
+				function drawWhiteBar(values) {
+					let totalValuesWidth = values.reduce((acc, val) => acc + val, 0);
+					let totalWidth = 0;
+
+					values.forEach((value, index) => {
+						const width = (value / totalValuesWidth) * whiteWidth;
+						const height = 50;
+						const color = whiteColorFunc(index);
+						contexts.confidence.fillStyle = `rgb(${color.r}, ${color.g}, ${color.b})`;
+						contexts.confidence.fillRect(
+							rect.w - totalWidth - width + offset,
+							5,
+							width,
+							height - 10,
+						);
+						totalWidth += width;
+					});
+				}
+
+				const blackColorFunc = (index) => ({
+					r: 255 * (1 - brightness[index]),
+					g: 255 * (1 - brightness[index]),
+					b: 255 * (1 - brightness[index]),
+				});
+
+				const whiteColorFunc = (index) => ({
+					r: 255 * brightness[index],
+					g: 255 * brightness[index],
+					b: 255 * brightness[index],
+				});
+
+				function writeTotalScores(confidenceScore, inside, outside, color) {
+					contexts.confidence.font = "40px Arial";
+					let x;
+					if (color === "black") {
+						x = offset + 25; // 50 as an example offset, you can adjust it
+						contexts.confidence.fillStyle = outside;
+						contexts.confidence.fillText(confidenceScore, x + 3, 40);
+						contexts.confidence.fillStyle = outside;
+						contexts.confidence.fillText(confidenceScore, x - 3, 40);
+						contexts.confidence.fillStyle = outside;
+						contexts.confidence.fillText(confidenceScore, x, 40 - 3);
+						contexts.confidence.fillStyle = outside;
+						contexts.confidence.fillText(confidenceScore, x, 40 + 3);
+						contexts.confidence.fillStyle = inside;
+						contexts.confidence.fillText(confidenceScore, x, 40); // slight offset for inside text
+					} else if (color === "white") {
+						x = rect.w - offset - 25; // 50 as an example offset, you can adjust it
+						contexts.confidence.fillStyle = outside;
+						contexts.confidence.fillText(confidenceScore, x + 3, 40);
+						contexts.confidence.fillStyle = outside;
+						contexts.confidence.fillText(confidenceScore, x - 3, 40);
+						contexts.confidence.fillStyle = outside;
+						contexts.confidence.fillText(confidenceScore, x, 40 - 3);
+						contexts.confidence.fillStyle = outside;
+						contexts.confidence.fillText(confidenceScore, x, 40 + 3);
+						contexts.confidence.fillStyle = inside;
+						contexts.confidence.fillText(confidenceScore, x, 40); // slight offset for inside text
+					}
+				}
+
+				drawBlackBar(black.values);
+				drawWhiteBar(white.values);
+
+				writeTotalScores(black.territory, "black", "white", "black");
+				writeTotalScores(white.territory, "white", "black", "white");
+
+				contexts.confidence.strokeStyle = "black";
+				contexts.confidence.lineWidth = 4;
+				drawRoundedRect(offset, 2.5, rect.w, rect.h - 5, rect.r);
+			}
+
+			function drawInfo({ winrate, players }) {
+				clearCanvas(contexts.info);
+			}
+
+			const pathSegments = window.location.pathname.split("/");
+			const type = pathSegments[1];
+			const id = pathSegments[2];
+			const eventName = `${type}/${id}`;
+			document.getElementById("title").textContent = eventName;
+
+			// Socket Event Handling
+			socket.on("connect", () => {
+				console.log("connected");
+				socket.emit("subscribe", { id: id });
+			});
+			socket.on("error", (err) => {
+				console.log(err);
+			});
+			socket.on("disconnect", () => {
+				document.getElementById("status").textContent = "Disconnected";
+			});
+
+			socket.on(eventName, (gameData) => {
+				const jsonData = JSON.parse(gameData);
+				const data = jsonData.data;
+				console.log(data);
+				Object.values(contexts).forEach((context) => clearCanvas(context));
+				drawBoard({ moves: data.state, lastMove: data.last, aiMoves: data.ai.colors });
+				// drawConfidence({ black: data.confidence.black, white: data.confidence.white });
+				drawTerritory({ black: data.confidence.black, white: data.confidence.white });
+				drawInfo({ winrate: data.winrate, players: data.players });
+			});
+		</script>
+	</body>
 </html>
