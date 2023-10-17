@@ -178,6 +178,7 @@ class GameEntity {
         const ownership = this.ai.ownership; // ai ownershipmap that is returned from the query
         const current = this.current.player; // decides who the positive point belongs
         const values = [1, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1];
+        const move = this.current.move / 2
 
         let confidence = {};
         let blackValues = Array(10).fill(0);
@@ -208,13 +209,18 @@ class GameEntity {
         whiteValues = whiteValues.map(value => Math.round(value))
         whiteValues[0] += 7
 
+        blackValues = [blackValues[0] + blackValues[1] + blackValues[2], blackValues[3] + blackValues[4] + blackValues[5], blackValues[6] + blackValues[7],  blackValues[8] + blackValues[9]]
+        whiteValues = [whiteValues[0] + whiteValues[1] + whiteValues[2], whiteValues[3] + whiteValues[4] + whiteValues[5], whiteValues[6] + whiteValues[7],  whiteValues[8] + whiteValues[9]]
+
         confidence.black = {
             values: blackValues,
-            points: blackValues.reduce((total, currentValue) => total + currentValue, 0)
+            territory: current == 'W' ? blackValues.reduce((total, currentValue) => total + currentValue, 0) - move + 0.5 : blackValues.reduce((total, currentValue) => total + currentValue, 0) - move,
+            points: blackValues.reduce((total, currentValue) => total + currentValue, 0),
         }
         confidence.white = {
             values: whiteValues,
-            points: whiteValues.reduce((total, currentValue) => total + currentValue, 0)
+            territory: current == 'W' ? whiteValues.reduce((total, currentValue) => total + currentValue, 0) - move - 0.5 : whiteValues.reduce((total, currentValue) => total + currentValue, 0) - move,
+            points: whiteValues.reduce((total, currentValue) => total + currentValue, 0),
         }
 
         return confidence;
@@ -252,11 +258,13 @@ class GameEntity {
             confidence: {
                 black: {
                     points: this.ai.confidence.black.points,
-                    values: this.ai.confidence.black.values
+                    values: this.ai.confidence.black.values,
+                    territory: this.ai.confidence.black.territory
                 },
                 white: {
                     points: this.ai.confidence.white.points,
-                    values: this.ai.confidence.white.values
+                    values: this.ai.confidence.white.values,
+                    territory: this.ai.confidence.white.territory
                 }
             },
             current: {
