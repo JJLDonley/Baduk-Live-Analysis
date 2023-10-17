@@ -152,10 +152,11 @@ function setupOGSListeners(type, id) {
 
         OGS.on("game/" + id + "/move", (data) => {
             if (!data.move) { return }
-            const currentColor = GAMES[id].current.player
+            const currentColor = GAMES[id].current.move % 2 == 0 ? 'b' : 'w'
             const MOVE = formatGameMoveData('move', data.move, currentColor)
-            const LIST = GAMES[id].moves
-            const MOVES = LIST.push(MOVE)
+            let list = GAMES[id].moves
+            list.push(MOVE)
+            const MOVES = list
             const UUID = GAMES[id].uuid
             const QUERIES = GAMES[id].queries
             QUEUE.process(GAMES[id], UUID, QUERIES, MOVES, AI, BES)
@@ -250,26 +251,8 @@ APP.get('/', (req, res) => {
 
 BES.on('connection', (socket) => {
     console.log('Frontend client connected');
-    
-    socket.on('subscribe', (data) => {
-        const id = data.id
-        if(GAMES[id] && GAMES[id].queries >= 1) {
-            console.log('Game already exist... sending data')
-            const game = GAMES[id]
-            const gameEmitID = `${game.type}/${game.id}`
-    
-            const payload = {
-                type: gameEmitID,
-                data: game.data(),
-            };
-            console.log('Emitted: ' + gameEmitID)
-            BES.emit(gameEmitID, JSON.stringify(payload))
-        }
-    });
-
     socket.on('disconnect', () => {
         console.log('Frontend client disconnected');
-        OGS.off('game/')
     });
 });
 
@@ -289,11 +272,9 @@ OGS.on('hostinfo', (hostinfo) => {
     if (GAMES && Object.keys(GAMES).length > 0) {
         console.log('Detected games in the GAMES object. Reconnecting...');
 
-        // Iterate over the games and reinitialize or reconnect them
-        for (let gameId in GAMES) {
-            let gameType = GAMES[gameId].type;
-            connectLiveGame(gameType, gameId);
-        }
+        Object.keys(GAMES).forEach(game => {
+            connectLiveGame(game.type, game.id)
+        })
     }
 });
 
@@ -303,6 +284,9 @@ OGS.on('authenticate', (auth) => {
 
 OGS.on('disconnect', () => {
     console.log('Disconnected from OGS. Attempting to reconnect...');
+    Object.keys(GAMES).forEach(game => {
+        OGS.off(`${game.type}/${game.id}`)
+    })
 });
 
 OGS.on('error', (error) => {
