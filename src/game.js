@@ -6,6 +6,7 @@ class GameEntity {
 		this.type = data.type;
 		this.name = data.name;
 		this.moves = data.moves;
+		this.liveMoves = data.moves;
 		this.queries = 0;
 		this.uuid = uuidv4();
 		this.state = [];
@@ -91,9 +92,17 @@ class GameEntity {
 		// ai suggested moves
 
 		this.ai.moves = this.sortAIQueryMoves(query["moveInfos"]);
-		this.ai.blue = this.aiMoveToArrayCoordinates(this.ai.moves[0], "blue");
-		this.ai.green = this.aiMoveToArrayCoordinates(this.ai.moves[1], "yellow");
-		this.ai.yellow = this.aiMoveToArrayCoordinates(this.ai.moves[2], "green");
+
+    if (this.ai.moves.length > 0) {
+        const colors = ["blue", "yellow", "green"];
+        
+        for (let i = 0; i < 3; i++) {
+            if (this.ai.moves[i]) {
+                this.ai[colors[i]] = this.aiMoveToArrayCoordinates(this.ai.moves[i], colors[i]);
+            }
+        }
+    }
+    
 
 		this.state = this.board.state(this.moves);
 	}
@@ -293,7 +302,7 @@ class GameEntity {
 			id: this.id,
 			last: {
 				move: this.last.move,
-				value: this.last.value,
+				value: (this.last.value * 0.1).toFixed(2),
 			},
 			lead: this.lead,
 			moves: this.moves,
@@ -429,7 +438,9 @@ class Board {
 
 	state(moves) {
 		this.grid = Array.from({ length: 19 }, () => Array(19).fill(""));
-		moves.forEach((move) => this.playMove(move));
+		if (moves.length > 0) {
+			moves.forEach((move) => this.playMove(move));
+		}
 
 		return this.grid;
 	}
