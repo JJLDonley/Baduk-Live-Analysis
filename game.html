@@ -98,7 +98,9 @@
 					drawLastMove(lastMove);
 				}
 
-				drawAIMoves(aiMoves);
+				if (aiMoves && aiMoves.length > 0) {
+					drawAIMoves(aiMoves);
+				}
 			}
 
 			function clearCanvas(context) {
@@ -222,7 +224,8 @@
 
 			function drawAIMoves(aiMoves) {
 				const radius = BOARD_SETTINGS.cellSize / BOARD_SETTINGS.stoneRadiusFactor - 5;
-				for (const [color, x, y] of aiMoves) {
+				for (let ai = 0; ai < aiMoves.length; ai++) {
+					const [color, x, y] = aiMoves[ai];
 					contexts.goban.beginPath();
 					contexts.goban.arc(
 						BOARD_SETTINGS.padding + x * BOARD_SETTINGS.cellSize,
@@ -524,13 +527,15 @@
 			// Socket Event Handling
 			socket.on("connect", () => {
 				console.log("connected");
+				console.log("Emitted to Game");
 				socket.emit("subscribe", { id: id });
 			});
 			socket.on("error", (err) => {
 				console.log(err);
 			});
+
 			socket.on("disconnect", () => {
-				document.getElementById("status").textContent = "Disconnected";
+				console.log("disconnected");
 			});
 
 			socket.on(eventName, (gameData) => {
@@ -539,8 +544,7 @@
 				console.log(data);
 				Object.values(contexts).forEach((context) => clearCanvas(context));
 				drawBoard({ moves: data.state, lastMove: data.last, aiMoves: data.ai.colors });
-				// drawConfidence({ black: data.confidence.black, white: data.confidence.white });
-				drawTerritory({ black: data.confidence.black, white: data.confidence.white });
+				drawConfidence({ black: data.confidence.black, white: data.confidence.white });
 				drawInfo({ winrate: data.winrate, players: data.players });
 			});
 		</script>
