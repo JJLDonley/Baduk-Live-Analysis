@@ -143,7 +143,7 @@ function formatGameStateData(type, data) {
 						rank: WR,
 					},
 				},
-				current: formatedMoves[formatedMoves.length - 1][0],
+				current: formatedMoves.length % 2 == 0 ? 'b' : 'w'
 			};
 
 			GAMES[id] = new GameEntity(gamedata);
