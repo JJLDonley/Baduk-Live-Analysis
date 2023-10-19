@@ -122,6 +122,7 @@ class GameEntity {
 	}
 
 	lastMoveToArrayCoordinates() {
+		if(!this.last.move[0]) return;
 		const move = this.last.move;
 		const color = move[0];
 		const letters = "abcdefghjklmnopqrst";
