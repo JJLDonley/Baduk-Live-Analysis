@@ -20,7 +20,8 @@
 
 		<script>
 			// Constants and Variables
-			const GameData = [];
+			const Players = {};
+			// const GameData = []; to be used for animations in later development
 			const socket = io("http://localhost:2468");
 			const elements = {
 				gobanVisual: document.getElementById("board"),
@@ -77,171 +78,155 @@
 				ctx.stroke();
 			}
 
+			function clearCanvas(context) {
+				context.clearRect(0, 0, context.canvas.width, context.canvas.height);
+			}
 			// Canvas setup
 			setupCanvas(elements.gobanVisual, 1600, 1600, "800px", "800px");
 			setupCanvas(elements.confidenceChart, 1600, 100, "800px", "50px");
 			setupCanvas(elements.playerInfo, 1600, 200, "800px", "100px");
 
 			Object.values(contexts).forEach((ctx) => ctx.scale(2, 2));
+			const GoBoard = {
+				clearCanvas(context) {
+					context.clearRect(0, 0, context.canvas.width, context.canvas.height);
+				},
 
-			function drawBoard({ moves, lastMove, aiMoves }) {
-				clearCanvas(contexts.goban);
-				drawBackground();
-				drawLines();
-				drawLabels();
+				drawBackground() {
+					const { goban } = contexts;
+					const { size, padding } = BOARD_SETTINGS;
 
-				if (moves.length == 0) return;
+					goban.fillStyle = "#FFCC66";
+					goban.fillRect(0, 0, size + 2 * padding, size + 2 * padding);
+				},
 
-				drawStones(moves);
-
-				if (lastMove) {
-					drawLastMove(lastMove);
-				}
-
-				if (aiMoves && aiMoves.length > 0) {
-					drawAIMoves(aiMoves);
-				}
-			}
-
-			function clearCanvas(context) {
-				context.clearRect(0, 0, context.canvas.width, context.canvas.height);
-			}
-
-			function drawBackground() {
-				contexts.goban.fillStyle = "#FFCC66";
-				contexts.goban.fillRect(
-					0,
-					0,
-					BOARD_SETTINGS.size + 2 * BOARD_SETTINGS.padding,
-					BOARD_SETTINGS.size + 2 * BOARD_SETTINGS.padding,
-				);
-			}
-
-			function drawLines() {
-				for (let i = 0; i < 19; i++) {
-					drawSingleLine(i);
-				}
-			}
-
-			function drawSingleLine(i) {
-				contexts.goban.beginPath();
-				contexts.goban.moveTo(
-					BOARD_SETTINGS.padding,
-					BOARD_SETTINGS.padding + i * BOARD_SETTINGS.cellSize,
-				);
-				contexts.goban.lineTo(
-					BOARD_SETTINGS.size - BOARD_SETTINGS.padding - 2,
-					BOARD_SETTINGS.padding + i * BOARD_SETTINGS.cellSize,
-				);
-				contexts.goban.moveTo(
-					BOARD_SETTINGS.padding + i * BOARD_SETTINGS.cellSize,
-					BOARD_SETTINGS.padding,
-				);
-				contexts.goban.lineTo(
-					BOARD_SETTINGS.padding + i * BOARD_SETTINGS.cellSize,
-					BOARD_SETTINGS.size - BOARD_SETTINGS.padding - 2,
-				);
-				contexts.goban.strokeStyle = "#000";
-				contexts.goban.stroke();
-			}
-
-			function drawLabels() {
-				contexts.goban.font = "16px Arial";
-				contexts.goban.textAlign = "center";
-				contexts.goban.textBaseline = "middle";
-				contexts.goban.fillStyle = "#000";
-				for (let i = 0; i < 19; i++) {
-					drawSingleLabel(i);
-				}
-			}
-
-			function drawSingleLabel(i) {
-				contexts.goban.fillText(
-					BOARD_SETTINGS.letters.charAt(i),
-					BOARD_SETTINGS.padding + i * BOARD_SETTINGS.cellSize,
-					BOARD_SETTINGS.size - BOARD_SETTINGS.padding + 10,
-				);
-				contexts.goban.fillText(
-					String(19 - i),
-					8,
-					BOARD_SETTINGS.padding + i * BOARD_SETTINGS.cellSize,
-				);
-			}
-
-			function drawStones(moves) {
-				const stoneRadius = BOARD_SETTINGS.cellSize / BOARD_SETTINGS.stoneRadiusFactor - 5;
-
-				for (let y = 0; y < 19; y++) {
-					for (let x = 0; x < 19; x++) {
-						const color = moves[y][x];
-						if (color === "") continue;
-						drawSingleStone(x, y, stoneRadius, color);
+				drawLines() {
+					for (let i = 0; i < 19; i++) {
+						this.drawSingleLine(i);
 					}
-				}
-			}
+				},
 
-			function drawSingleStone(x, y, radius, color) {
-				contexts.goban.beginPath();
-				contexts.goban.arc(
-					BOARD_SETTINGS.padding + x * BOARD_SETTINGS.cellSize,
-					BOARD_SETTINGS.padding + y * BOARD_SETTINGS.cellSize,
-					radius,
-					0,
-					Math.PI * 2,
-					false,
-				);
-				contexts.goban.strokeStyle = "black";
-				contexts.goban.lineWidth = 2;
-				switch (color) {
-					case "b":
-						contexts.goban.fillStyle = "black";
-						break;
-					case "w":
-						contexts.goban.fillStyle = "white";
-						break;
-				}
-				contexts.goban.fill();
-				contexts.goban.stroke();
-			}
+				drawSingleLine(i) {
+					const { goban } = contexts;
+					const { padding, cellSize, size } = BOARD_SETTINGS;
 
-			function drawLastMove(last) {
-				const [unused, x, y] = last.move;
-				const percentage = last.value;
-				// const color = percentage >= 15 ? "purple" : 8 < percentage < 15 ? "red" : 4 < percentage < 8 ? "yellow" : "green"
-				contexts.goban.beginPath();
-				contexts.goban.arc(
-					BOARD_SETTINGS.padding + x * BOARD_SETTINGS.cellSize,
-					BOARD_SETTINGS.padding + y * BOARD_SETTINGS.cellSize,
-					10,
-					0,
-					Math.PI * 2,
-					false,
-				);
-				contexts.goban.strokeStyle = "red";
-				contexts.goban.lineWidth = 4;
-				contexts.goban.stroke();
-			}
+					goban.beginPath();
 
-			function drawAIMoves(aiMoves) {
-				const radius = BOARD_SETTINGS.cellSize / BOARD_SETTINGS.stoneRadiusFactor - 5;
-				for (let ai = 0; ai < aiMoves.length; ai++) {
-					const [color, x, y] = aiMoves[ai];
-					contexts.goban.beginPath();
-					contexts.goban.arc(
-						BOARD_SETTINGS.padding + x * BOARD_SETTINGS.cellSize,
-						BOARD_SETTINGS.padding + y * BOARD_SETTINGS.cellSize,
-						radius,
-						0,
-						Math.PI * 2,
-						false,
-					);
-					contexts.goban.strokeStyle = "black";
-					contexts.goban.lineWidth = 2;
-					contexts.goban.stroke();
-					contexts.goban.fillStyle = color;
-					contexts.goban.fill();
-				}
-			}
+					const drawCoords = [
+						[padding, padding + i * cellSize],
+						[size - padding - 2, padding + i * cellSize],
+						[padding + i * cellSize, padding],
+						[padding + i * cellSize, size - padding - 2],
+					];
+
+					drawCoords.forEach(([x, y], index) => {
+						const action = index % 2 === 0 ? "moveTo" : "lineTo";
+						goban[action](x, y);
+					});
+
+					goban.strokeStyle = "#000";
+					goban.stroke();
+				},
+
+				drawLabels() {
+					const { goban } = contexts;
+					goban.font = "16px Arial";
+					goban.textAlign = "center";
+					goban.textBaseline = "middle";
+					goban.fillStyle = "#000";
+
+					for (let i = 0; i < 19; i++) {
+						this.drawSingleLabel(i);
+					}
+				},
+
+				drawSingleLabel(i) {
+					const { goban } = contexts;
+					const { padding, cellSize, letters } = BOARD_SETTINGS;
+
+					goban.fillText(letters.charAt(i), padding + i * cellSize, cellSize * 19);
+					goban.fillText(String(19 - i), 8, padding + i * cellSize);
+				},
+
+				drawStones(moves) {
+					const radius = this.getStoneRadius();
+
+					moves.forEach((row, y) => {
+						row.forEach((color, x) => {
+							if (color) this.drawSingleStone(x, y, radius, color);
+						});
+					});
+				},
+
+				drawSingleStone(x, y, radius, color) {
+					const { goban } = contexts;
+					const { padding, cellSize } = BOARD_SETTINGS;
+
+					goban.beginPath();
+					goban.arc(padding + x * cellSize, padding + y * cellSize, radius, 0, Math.PI * 2);
+					goban.strokeStyle = "black";
+					goban.lineWidth = 2;
+					goban.fillStyle = color === "b" ? "black" : "white";
+					goban.fill();
+					goban.stroke();
+				},
+
+				getStoneRadius() {
+					const { cellSize, stoneRadiusFactor } = BOARD_SETTINGS;
+					return cellSize / stoneRadiusFactor - 5;
+				},
+
+				drawLastMove(last) {
+					const { goban } = contexts;
+					const { padding, cellSize } = BOARD_SETTINGS;
+
+					const [unused, x, y] = last.move;
+
+					goban.beginPath();
+					goban.arc(padding + x * cellSize, padding + y * cellSize, 10, 0, Math.PI * 2);
+					goban.strokeStyle = "red";
+					goban.lineWidth = 4;
+					goban.stroke();
+				},
+
+				drawAIMoves(aiMoves) {
+					const radius = this.getStoneRadius();
+					const { goban } = contexts;
+					const { padding, cellSize } = BOARD_SETTINGS;
+
+					aiMoves.forEach(([color, x, y]) => {
+						goban.beginPath();
+						goban.arc(padding + x * cellSize, padding + y * cellSize, radius, 0, Math.PI * 2);
+						goban.strokeStyle = "black";
+						goban.lineWidth = 2;
+						goban.fillStyle = color;
+						goban.fill();
+						goban.stroke();
+					});
+				},
+
+				drawBoard({ moves, lastMove, aiMoves }) {
+					this.clearCanvas(contexts.goban);
+					this.drawBackground();
+					this.drawLines();
+					this.drawLabels();
+
+					if (!moves.length) return;
+
+					this.drawStones(moves);
+
+					if (lastMove) {
+						this.drawLastMove(lastMove);
+					}
+
+					if (aiMoves && aiMoves.length) {
+						this.drawAIMoves(aiMoves);
+					}
+				},
+			};
+
+			// Usage example:
+			// GoBoard.drawBoard({ moves: someMoves, lastMove: someLastMove, aiMoves: someAiMoves });
 
 			function drawConfidence({ black, white }) {
 				const valueMultiplier = 2;
@@ -290,7 +275,7 @@
 						const width = value * valueMultiplier;
 						const height = 50;
 						const color = blackColorFunc(index);
-						contexts.confidence.fillStyle = `rgb(${color.r}, ${color.g}, ${color.b})`;
+						contexts.confidence.fillStyle = `rgb(${color.r + 15}, ${color.g + 15}, ${color.b + 15})`;
 						contexts.confidence.fillRect(
 							(blackValuesTotals += width) - width + offset,
 							5,
@@ -516,6 +501,87 @@
 
 			function drawInfo({ winrate, players }) {
 				clearCanvas(contexts.info);
+
+				function drawCircle({ x, y, r, color, percentage, text }) {
+					const startAngle = -Math.PI / 2; // This will start the fill from the top of the circle.
+					const endAngle = startAngle + 2 * Math.PI * (percentage / 100);
+
+					// Draw the full circle background (optional if you want a background for your pie)
+					// contexts.info.beginPath();
+					// contexts.info.arc(x, y, r, 0, 2 * Math.PI);
+					// contexts.info.closePath();
+					// contexts.info.fillStyle = "grey";  // Or any other default background color
+					// contexts.info.fill();
+
+					// Draw the colored portion of the circle
+					contexts.info.beginPath();
+					contexts.info.arc(x, y, r, startAngle, endAngle);
+					contexts.info.lineTo(x, y);
+					contexts.info.closePath();
+					contexts.info.fillStyle = color;
+					contexts.info.fill();
+
+					// If text is provided, render it at the center of the circle
+					if (text) {
+						contexts.info.fillStyle = "black"; // Choose a color for the text
+						contexts.info.textAlign = "center";
+						contexts.info.textBaseline = "middle";
+						contexts.info.font = "24px Arial"; // Adjust font size and type as needed
+						contexts.info.fillText(text, x, y);
+					}
+				}
+
+				function drawWinRate(winrate) {
+					const whiteWinRate = winrate.human.white;
+					const blackWinRate = winrate.human.black;
+
+					wrCircle = {
+						x: 800,
+						y: 0,
+						radius: 20,
+						offset: 20,
+					};
+
+					drawCircle({ x: 400, y: 30 + 20, r: 50, color: "black", percentage: 100 });
+					drawCircle({ x: 400, y: 30 + 20, r: 50, color: "white", percentage: whiteWinRate });
+					drawCircle({
+						x: 400,
+						y: 30 + 20,
+						r: 40,
+						color: "grey",
+						percentage: 100,
+						text: `${whiteWinRate + "%"}`,
+					});
+				}
+
+				function drawPlayerNameLeft(name) {
+					const textWidth = contexts.info.measureText(name).width;
+					const x = 20; // Starting position
+					const y = 70; // Adjust based on your desired position
+
+					contexts.info.fillStyle = "black"; // Choose a color for the text
+					contexts.info.textAlign = "left";
+					contexts.info.textBaseline = "middle";
+					contexts.info.font = "40px Arial"; // Adjust font size and type as needed
+					contexts.info.fillText(name, x, y);
+				}
+
+				function drawPlayerNameRight(name) {
+					const canvasWidth = contexts.info.canvas.width;
+					const textWidth = contexts.info.measureText(name).width;
+					const x = canvasWidth / 2 - 20 - textWidth; // Subtract the width of the text from the desired position
+					const y = 70; // Adjust based on your desired position
+
+					contexts.info.fillStyle = "black"; // Choose a color for the text
+					contexts.info.textAlign = "left"; // Set to 'left' because we've already adjusted for the width
+					contexts.info.textBaseline = "middle";
+					contexts.info.font = "40px Arial"; // Adjust font size and type as needed
+					contexts.info.fillText(name, x, y);
+				}
+
+				drawWinRate(winrate);
+				drawPlayerNameLeft(players.black.name);
+				drawPlayerNameRight(players.white.name);
 			}
 
 			const pathSegments = window.location.pathname.split("/");
@@ -543,7 +609,7 @@
 				const data = jsonData.data;
 				console.log(data);
 				Object.values(contexts).forEach((context) => clearCanvas(context));
-				drawBoard({ moves: data.state, lastMove: data.last, aiMoves: data.ai.colors });
+				GoBoard.drawBoard({ moves: data.state, lastMove: data.last, aiMoves: data.ai.colors });
 				drawConfidence({ black: data.confidence.black, white: data.confidence.white });
 				drawInfo({ winrate: data.winrate, players: data.players });
 			});
