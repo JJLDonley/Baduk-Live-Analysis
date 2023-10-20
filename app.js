@@ -143,7 +143,7 @@ function formatGameStateData(type, data) {
 						rank: WR,
 					},
 				},
-				current: formatedMoves.length % 2 == 0 ? 'b' : 'w'
+				current: formatedMoves.length % 2 == 0 ? "b" : "w",
 			};
 
 			GAMES[id] = new GameEntity(gamedata);
@@ -220,6 +220,14 @@ function connectLiveGame(type, id) {
 			});
 
 			OGS.on("review/" + id + "/full_state", (data) => {
+				if (data[0].gamedata.game_id) {
+					console.log("failed to connect Please use a demo board game or live game");
+					BES.emit("error", {
+						err: "please use a demo board review. Game reviews are not permitted",
+					});
+					return;
+				}
+
 				const MOVES = formatGameStateData(type, data);
 				if (MOVES == undefined) {
 					console.log(`Game: ${GAMES[id].id} doesn't have moves yet`);
