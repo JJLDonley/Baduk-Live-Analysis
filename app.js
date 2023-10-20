@@ -33,12 +33,15 @@ const stringMovesToCoordinates = (moveString) => {
 	}
 
 	const moves = pairs.map((pair, i) => {
+		if(pair[0] === "." && pair[1] === "."){
+			return null;
+		}
 		const x_num = coordinates.indexOf(pair[0]);
-		const y = 19 - coordinates.indexOf(pair[1]); // subtract from 19 for correct row
+		const y = 19 - coordinates.indexOf(pair[1]);
 		const x = letters[x_num];
-		const player = i % 2 === 0 ? "b" : "w"; // assume 'b' goes first
+		const player = i % 2 === 0 ? "b" : "w";
 		return [player, x, y];
-	});
+	}).filter(move => move !== null);
 
 	return moves;
 };

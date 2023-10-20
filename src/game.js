@@ -98,6 +98,10 @@ class GameEntity {
         
         for (let i = 0; i < 3; i++) {
             if (this.ai.moves[i]) {
+				if(this.ai.moves[i][0] === 'pass'){
+					continue
+				}
+				
                 this.ai[colors[i]] = this.aiMoveToArrayCoordinates(this.ai.moves[i], colors[i]);
             }
         }
