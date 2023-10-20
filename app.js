@@ -279,6 +279,9 @@ BES.on("connection", (socket) => {
 		if (GAMES[id]) {
 			const game = GAMES[id];
 			const gameEmitID = `${game.type}/${game.id}`;
+			game.state = game.board.state(game.moves)
+			game.last.move = game.moves[game.moves.length - 1];
+			game.lastMoveToArrayCoordinates();
 			const payload = {
 				type: gameEmitID,
 				data: game.data(),
