@@ -16,7 +16,9 @@ class Queue {
 		}
 
 		this.processing = true;
-		const { game, uuid, queries, moves, ai, BES } = this.queue.shift();
+
+		const { game, uuid, queries, moves, ai, BES } = this.latestUniqueMove();
+
 		try {
 			const query = await ai.query(uuid, queries, moves);
 			await game.analysis(query, moves);
@@ -35,6 +37,26 @@ class Queue {
 
 		await this.processNext(); // Use 'await' here
 	}
+
+	latestUniqueMove() {
+		if (this.queue.length === 0) {
+			return null;
+		}
+	
+		let latestMove = this.queue.shift();
+		let i = 0;
+	
+		while (i < this.queue.length) {
+			if (this.queue[i].uuid === latestMove.uuid) {
+				latestMove = this.queue.splice(i, 1)[0];
+			} else {
+				i++;
+			}
+		}
+	
+		return latestMove;
+	}
+	
 }
 
 module.exports = Queue;

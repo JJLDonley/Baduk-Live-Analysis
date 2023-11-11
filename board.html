@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title id="title">Game Page</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playpen+Sans&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+</head>
+
+<body>
+  <div id="clock-container">
+    <canvas id="clock" width="800" height="50"></canvas>
+  </div>
+  <div id="infomation-container">
+    <canvas id="infomation" width="800" height="100"></canvas>
+  </div>
+  <div id="board-container" style="width: 800px; height: 800px; margin-bottom: 20px">
+    <canvas id="board" width="800" height="800"></canvas>
+  </div>
+  <div id="confidence-chart-container" style="width: 800px; height: 50px; margin-bottom: 20px">
+    <canvas id="confidence-chart" width="800" height="150"></canvas>
+  </div>
+
+  <script>
+    const SOCKET = io("http://localhost:2468");
+    const GAME = {}
+    const CLOCK = {}
+
+    const getEvent = (type) => {
+      const segments = window.location.pathname.split("/");
+      const type = segments[1];
+      const id = segments[2];
+      GAME.type = type
+      GAME.id = id
+
+      return { event: `${type}/${id}`, clock: `clock/${id}` }
+    }
+
+    const startSocket = () => {
+      const { event, clock } = getEvent();
+
+      SOCKET.on("connect", () => {
+        console.log("connected");
+        console.log("Emitted to Game");
+        SOCKET.emit("subscribe", { id: id });
+      });
+      SOCKET.on("error", (err) => {
+        console.log(err);
+      });
+
+      SOCKET.on("disconnect", () => {
+        console.log("disconnected");
+      });
+
+      SOCKET.on(event, eventProcess(data))
+      SOCKET.on(clock, clockProcess(data))
+    }
+
+    const eventProcess = (data) => {
+      data = JSON.parse(data).data;
+      GAME.previous = GAME.current
+      GAME.current = data
+      GAME.board();
+      GAME.winrate();
+      GAME.info();
+      GAME.score();
+    }
+
+    window.onload = startSocket;
+
+  </script>
+  <script>
+    CLOCK.canvas = document.getElementsById('clock')
+    CLOCK.context = CLOCK.canvas.getContext('2d')
+    CLOCK.render = () => {
+      CLOCK.text()
+    }
+
+    CLOCK.countdown = () => {
+      if (GAME.current === 'b') {
+        CLOCK.black_time--
+      } else {
+        CLOCK.white_time--
+      }
+
+      CLOCK.timeSystems(GAME.time_system);
+    }
+
+    const clockProcess = (data) => {
+      data = JSON.parse(data).data
+      CLOCK.black_time = data.black_time
+      CLOCK.white_time = data.white_time
+      CLOCK.start = true
+      CLOCK.end = false
+      CLOCK.current = data.current_player === data.black_player_id ? 'black' : 'white'
+
+      if (CLOCK.start == true) {
+        CLOCK.countdownInterval();
+      }
+
+      if (CLOCK.end == true) {
+        clearInterval(CLOCK.countdownInterval);
+      }
+    }
+
+    CLOCK.timeSystems = (system) => {
+      if (CLOCK.black_time.thinking_time > 0 || CLOCK.white_time.thinking_time > 0) return
+
+      switch (system) {
+        case 'fischer':
+          if (CLOCK.countdownInterval) {
+            clearInterval(CLOCK.countdownInterval);
+            delete CLOCK.countdownInterval;
+          }
+          break
+        case 'byo-yomi':
+          if (CLOCK.black_time.periods == 0 || CLOCK.white_time.periods == 0) {
+            if (CLOCK.countdownInterval) {
+              clearInterval(CLOCK.countdownInterval);
+              delete CLOCK.countdownInterval;
+            }
+          }
+          break
+      }
+    }
+
+    CLOCK.countdownInterval = setInterval(() => {
+      CLOCK.countdown();
+      CLOCK.render();
+    }, 1000);
+  </script>
+
+</body>

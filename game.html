@@ -27,6 +27,7 @@
     // Constants and Variables
     let Players = {};
     let clockData
+    let countdownInterval;
     // const GameData = []; to be used for animations in later development
     const socket = io("http://localhost:2468");
     const elements = {
@@ -379,17 +380,9 @@
       }
 
       function drawCircle({ x, y, r, color, percentage, text }) {
-        const startAngle = -Math.PI / 2; // This will start the fill from the top of the circle.
+        const startAngle = -Math.PI / 2;
         const endAngle = startAngle + 2 * Math.PI * (percentage / 100);
 
-        // Draw the full circle background (optional if you want a background for your pie)
-        // contexts.info.beginPath();
-        // contexts.info.arc(x, y, r, 0, 2 * Math.PI);
-        // contexts.info.closePath();
-        // contexts.info.fillStyle = "grey";  // Or any other default background color
-        // contexts.info.fill();
-
-        // Draw the colored portion of the circle
         contexts.info.beginPath();
         contexts.info.arc(x, y, r, startAngle, endAngle);
         contexts.info.lineTo(x, y);
@@ -397,7 +390,6 @@
         contexts.info.fillStyle = color;
         contexts.info.fill();
 
-        // If text is provided, render it at the center of the circle
         if (text) {
           contexts.info.fillStyle = percentage <= 50 ? "black" : "white"; // Choose a color for the text
           contexts.info.textAlign = "center";
@@ -420,14 +412,6 @@
       function drawWinRate(winrate) {
         const whiteWinRate = winrate.human.white;
         const blackWinRate = winrate.human.black;
-
-        // wrCircle = {
-        // 	x: 800,
-        // 	y: 0,
-        // 	radius: 20,
-        // 	offset: 20,
-        // };
-
         drawCircle({ x: 400, y: 30 + 20, r: 50, color: "black", percentage: 100 });
         drawCircle({ x: 400, y: 30 + 20, r: 50, color: "white", percentage: whiteWinRate });
         drawCircle({
@@ -563,8 +547,11 @@
 
       function drawBlackClockLeft(main, byo, periods) {
         const maxWidth = 300;
-        const addZero = Math.round(main % 60) < 10 ? 0 : ''
-        const text = `${Math.round(main / 60)} : ${addZero}${Math.round(main % 60)} | ${periods} : ${byo}`
+        const seconds = Math.floor(main % 60);
+        const addZero = seconds < 10 ? '0' : '';
+        const minutes = Math.floor(main / 60);
+        const text = `${minutes}:${addZero}${seconds}`;
+
         const fontSize = adjustFontSizeToFit(text, maxWidth);
         const x = 20;
         const y = 70;
@@ -588,8 +575,11 @@
       function drawWhiteClockRight(main, byo, periods) {
         const canvasWidth = clock.canvas.width;
         const maxWidth = 300;
-        const addZero = Math.round(main % 60) < 10 ? 0 : ''
-        const text = `${Math.round(main / 60)} : ${addZero}${Math.round(main % 60)} | ${periods} : ${byo}`
+        const seconds = Math.floor(main % 60);
+        const addZero = seconds < 10 ? '0' : '';
+        const minutes = Math.floor(main / 60);
+        const text = `${minutes}:${addZero}${seconds}`;
+
         const fontSize = adjustFontSizeToFit(text, maxWidth);
         const textWidth = clock.measureText(text).width;
         const x = canvasWidth / 2 - 20 - textWidth;
@@ -626,6 +616,33 @@
 
     }
 
+    function startCountdown(current, black, white) {
+      // This function starts the countdown and updates the clock every second
+      if (countdownInterval) clearInterval(countdownInterval); // Clear any existing intervals
+
+      countdownInterval = setInterval(() => {
+        // Decrement the thinking time of the current player
+        if (current === "black") {
+          if (black.thinking_time > 0) {
+            black.thinking_time--;
+          } else {
+            // Handle period time logic here if needed
+          }
+        } else {
+          if (white.thinking_time > 0) {
+            white.thinking_time--;
+          } else {
+            // Handle period time logic here if needed
+          }
+        }
+
+        // Update the clock display
+        updateClock(current, black, white);
+
+        // You may want to implement logic to stop the interval when the game ends
+      }, 1000);
+    }
+
     const pathSegments = window.location.pathname.split("/");
     const type = pathSegments[1];
     const id = pathSegments[2];
@@ -659,15 +676,16 @@
 
     });
 
+    // The socket.on callback where you will call startCountdown to start the timer
     socket.on(`clock/${id}`, (data) => {
-      const jsonData = JSON.parse(data)
-      clockData = jsonData.data
-      const current = clockData.current_player === clockData.black_player_id ? "black" : "white"
-      const black = clockData.black_time
-      const white = clockData.white_time
+      const jsonData = JSON.parse(data);
+      const clockData = jsonData.data;
+      const current = clockData.current_player === clockData.black_player_id ? "black" : "white";
+      const black = clockData.black_time;
+      const white = clockData.white_time;
 
-      updateClock(current, black, white)
-    })
+      startCountdown(current, black, white);
+    });
 
   </script>
 </body>
