@@ -502,9 +502,9 @@
         const rect = document.getElementById(`black-points-${i}`);
         const score = blackScores[i - 1];
         const width = (score / 368) * boxWidth;
-        rect.setAttribute('width', width);
+        rect.setAttribute('width', width + 0.1);
         rect.setAttribute('x', blackTotal);
-        blackTotal += width - 0.2; // Adjusted here
+        blackTotal += width; // Adjusted here
       }
 
       // Update white scores
@@ -515,7 +515,7 @@
         const xPosition = boxWidth - whiteTotal - width + 1; // Adjusted here
         rect.setAttribute('width', width);
         rect.setAttribute('x', xPosition);
-        whiteTotal += width - 0.2; // Adjusted here
+        whiteTotal += width; // Adjusted here
       }
 
       elements.confidence.text.black.innerText = blackScores.reduce((accumulator, currentValue) => accumulator + currentValue, 0);
@@ -531,10 +531,13 @@
       setTimeout(function () {
         // Add a black stone at position (3, 3)
         addStone(3, 3, BLACK);
-        addStone(4, 3, WHITE);
+        addStone(2, 5, BLACK);
+        addStone(15, 3, BLACK);
 
         // Add a white stone at position (16, 16)
         addStone(15, 15, WHITE);
+        addStone(3, 15, WHITE);
+        addStone(3, 6, WHITE);
         removeStone(4, 3);
       }, 0);
 
