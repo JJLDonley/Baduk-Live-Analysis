@@ -2,692 +2,569 @@
 <html lang="en">
 
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title id="title">Game Page</title>
-  <link href="https://fonts.googleapis.com/css2?family=Playpen+Sans&display=swap" rel="stylesheet" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Baduk Analysis</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@900&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+  <Style>
+    body {
+      background-color: #00FF00;
+    }
+
+    .information {
+      display: flex;
+      justify-content: space-between;
+      /* This will align children to the edges */
+      align-items: center;
+      width: 524px;
+    }
+
+    .vertical {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: flex-start;
+      /* Align text to the left for black player */
+      flex: 1;
+    }
+
+    .vertical.right-aligned {
+      align-items: flex-end;
+      /* Align text to the right for white player */
+    }
+
+
+    .winrate {
+      position: relative;
+      width: 75px;
+      height: 75px;
+
+    }
+
+    #pie {
+      width: 100%;
+      height: 100%;
+      background-image: conic-gradient(rgb(233, 233, 233) 56%, black 44%);
+      border-radius: 100%
+    }
+
+    #pie-over {
+      position: absolute;
+      top: 8%;
+      /* top edge */
+      left: 8%;
+      /* left edge */
+      width: 84%;
+      height: 84%;
+      background-color: grey;
+      border-radius: 50%;
+    }
+
+    #pie-text {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-family: 'Roboto', sans-serif;
+      font-size: 28px;
+      color: white;
+
+    }
+
+    .vertical span,
+    .vertical text {
+      margin: 5px 0;
+    }
+
+    .clock {
+      font-size: 32px;
+    }
+
+    #player-name,
+    #white-name,
+    #white-clock {
+      padding-right: 4px;
+      font-family: 'Roboto', sans-serif;
+      font-size: 26px;
+      font-weight: 900;
+      -webkit-text-stroke: 1px black;
+      text-shadow:
+        -1px -1px 0 #000,
+        1px -1px 0 #000,
+        -1px 1px 0 #000,
+        1px 1px 0 #000;
+      color: white;
+    }
+
+    #player-name,
+    #black-name,
+    #black-clock {
+      padding-left: 4px;
+      font-family: 'Roboto', sans-serif;
+      font-size: 26px;
+      font-weight: 900;
+      -webkit-text-stroke: 1px white;
+      text-shadow:
+        -1px -1px 0 #ffffff,
+        1px -1px 0 #ffffff,
+        -1px 1px 0 #ffffff,
+        1px 1px 0 #ffffff;
+      color: black;
+    }
+
+    #black-clock,
+    #white-clock {
+      font-size: 32px;
+    }
+
+    .goboard {
+      width: 524px;
+      height: 524px;
+      background-image: url(https://ai-sensei.com/img/kaya14d.jpg);
+
+    }
+
+    .counting {
+      margin-top: 2px;
+      position: relative;
+      /* Establishes a positioning context */
+      width: 521px;
+      height: 38px;
+      border: 3px solid black;
+      border-radius: 5px 5px 5px 5px;
+      overflow: hidden;
+
+    }
+
+    #black-points,
+    #white-points {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      /* Centers the text vertically */
+    }
+
+    #black-points {
+      left: 30px;
+      font-family: 'Roboto', sans-serif;
+      font-size: 32px;
+      font-weight: 900;
+      -webkit-text-stroke: 1px white;
+      text-shadow:
+        -2px -2px 0 #ffffff,
+        2px -2px 0 #ffffff,
+        -2px 2px 0 #ffffff,
+        2px 2px 0 #ffffff;
+      color: black;
+    }
+
+    #white-points {
+      right: 30px;
+      text-align: right;
+      font-family: 'Roboto', sans-serif;
+      font-size: 32px;
+      -webkit-text-stroke: 1px black;
+      text-shadow:
+        -2px -2px 0 #000,
+        2px -2px 0 #000,
+        -2px 2px 0 #000,
+        2px 2px 0 #000;
+      color: white;
+    }
+  </Style>
 </head>
 
 <body>
-  <div id="clock-container">
-    <canvas id="clock" width="800" height="50"></canvas>
-  </div>
-  <div id="infomation-container">
-    <canvas id="infomation" width="800" height="100"></canvas>
-  </div>
-  <div id="board-container" style="width: 800px; height: 800px; margin-bottom: 20px">
-    <canvas id="board" width="800" height="800"></canvas>
-  </div>
-  <div id="confidence-chart-container" style="width: 800px; height: 50px; margin-bottom: 20px">
-    <canvas id="confidence-chart" width="800" height="150"></canvas>
+  <div class="information border-class">
+    <div class="vertical">
+      <span id="black-clock" class="clock">00:00</span>
+      <text id="black-name" class="player-name">Black Player</text> <!-- Corrected the class name -->
+    </div>
+    <div class="winrate">
+      <div id="pie"></div>
+      <div id="pie-over"></div>
+      <text id="pie-text">56%</text>
+    </div>
+    <div class="vertical right-aligned">
+      <span id="white-clock" class="clock">00:00</span>
+      <text id="white-name" class="player-name">White Player</text> <!-- Corrected the class name -->
+    </div>
   </div>
 
+  <div class="goboard" class="border-class">
+  </div>
+  <div class="counting" class="border-class">
+    <text id="black-points">117</text>
+    <text id="white-points">121</text>
+  </div>
   <script>
-    // Constants and Variables
-    let Players = {};
-    let clockData
-    let countdownInterval;
-    // const GameData = []; to be used for animations in later development
-    const socket = io("http://localhost:2468");
+    // const socket = io("http://localhost:2468");
     const elements = {
-      gobanVisual: document.getElementById("board"),
-      confidenceChart: document.getElementById("confidence-chart"),
-      playerInfo: document.getElementById("infomation"),
-      clock: document.getElementById("clock")
-    };
-
-    const contexts = {
-      goban: elements.gobanVisual.getContext("2d"),
-      confidence: elements.confidenceChart.getContext("2d"),
-      info: elements.playerInfo.getContext("2d"),
-      clock: elements.clock.getContext("2d")
-    };
-
-    const BOARD_SETTINGS = {
-      padding: 20,
-      size: 800,
-      cellSize: 800 / 19,
-      letters: "ABCDEFGHJKLMNOPQRST",
-      stoneRadiusFactor: 1.65,
-    };
-
-    const CONFIDENCE_CONSTANTS = {
-      offset: 30,
-      rect: {
-        width: 368 * 2,
-        height: 50,
-        midpoint: 368 / 2,
-        radius: 15,
+      clock: {
+        black: document.getElementById("black-clock"),
+        white: document.getElementById("white-clock")
       },
-      brightness: [1, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1],
-      valueMultiplier: 2,
-    };
-
-    // Utilities
-    function setupCanvas(element, width, height, styleWidth, styleHeight) {
-      element.width = width;
-      element.height = height;
-      element.style.width = styleWidth;
-      element.style.height = styleHeight;
+      names: {
+        black: document.getElementById("black-name"),
+        white: document.getElementById("white-name")
+      },
+      winrate: {
+        pie: document.getElementById("pie"),
+        over: document.getElementById("pie-over"),
+        text: document.getElementById("pie-text")
+      },
+      confidence: {
+        text: {
+          black: document.getElementById("black-points"),
+          white: document.getElementById("white-points")
+        }
+      }
     }
 
-    function drawRoundedRect(ctx, x, y, width, height, radius) {
-      ctx.beginPath();
-      ctx.moveTo(x + radius, y);
-      ctx.lineTo(x + width - radius, y);
-      ctx.arc(x + width - radius, y + radius, radius, 1.5 * Math.PI, 2 * Math.PI);
-      ctx.lineTo(x + width, y + height - radius);
-      ctx.arc(x + width - radius, y + height - radius, radius, 0, 0.5 * Math.PI);
-      ctx.lineTo(x + radius, y + height);
-      ctx.arc(x + radius, y + height - radius, radius, 0.5 * Math.PI, Math.PI);
-      ctx.lineTo(x, y + radius);
-      ctx.arc(x + radius, y + radius, radius, Math.PI, 1.5 * Math.PI);
-      ctx.closePath();
-      ctx.stroke();
-    }
+    const svgNS = "http://www.w3.org/2000/svg";
+    const BOARD_SIZE = 19;
+    const OFFSET = 50;
+    const GRID_SIZE = 800;
+    const CELL_SIZE = GRID_SIZE / (BOARD_SIZE - 1);
+    const VIEWBOX_SIZE = GRID_SIZE + 2 * OFFSET;
+    const BLACK_IMAGE = new Image();
+    const WHITE_IMAGE = new Image();
+    const BOARD_IMAGE = new Image();
+    const BOARD = BOARD_IMAGE.src = 'https://ai-sensei.com/img/kaya14d.jpg'
+    const BLACK = BLACK_IMAGE.src = 'https://ai-sensei.com/img/black_small.png'
+    const WHITE = WHITE_IMAGE.src = 'https://ai-sensei.com/img/white_small.png'
 
-    function clearCanvas(context) {
-      context.clearRect(0, 0, context.canvas.width, context.canvas.height);
-    }
-    // Canvas setup
-    setupCanvas(elements.gobanVisual, 1600, 1600, "800px", "800px");
-    setupCanvas(elements.confidenceChart, 1600, 100, "800px", "75px");
-    setupCanvas(elements.playerInfo, 1600, 200, "800px", "100px");
-    setupCanvas(elements.clock, 1600, 200, "800px", "100px");
+    const Display = {}
 
-    Object.values(contexts).forEach((ctx) => ctx.scale(2, 2));
+    function createGoBoardSVG() {
+      const svgNS = "http://www.w3.org/2000/svg";
+      const boardSize = 19;
+      const offset = 50; // Space for labels
+      const gridSize = 600; // Size of the grid for simplicity
+      const viewBoxSize = gridSize + 2 * offset;
+      const cellSize = gridSize / (boardSize - 1);
 
-    const GoBoard = {
-      clearCanvas(context) {
-        context.clearRect(0, 0, context.canvas.width, context.canvas.height);
-      },
+      // Create SVG element
+      const svg = document.createElementNS(svgNS, "svg");
+      svg.setAttributeNS(null, "viewBox", `0 0 ${viewBoxSize} ${viewBoxSize}`);
+      svg.setAttributeNS(null, "class", "board");
+      svg.setAttributeNS(null, "id", "board"); // Add this line
+      svg.style.overflow = "visible";
+      svg.style.width = '100%'; // Make it responsive
+      svg.style.height = '100%'; // Make it responsive
 
-      drawBackground() {
-        const { goban } = contexts;
-        const { size, padding } = BOARD_SETTINGS;
+      // Draw the board background
+      const boardBackground = document.createElementNS(svgNS, "rect");
+      boardBackground.setAttributeNS(null, "x", offset);
+      boardBackground.setAttributeNS(null, "y", offset);
+      boardBackground.setAttributeNS(null, "width", gridSize);
+      boardBackground.setAttributeNS(null, "height", gridSize);
+      boardBackground.setAttributeNS(null, "fill", "rgba(0, 0, 0, 0.05)");
+      svg.appendChild(boardBackground);
 
-        goban.fillStyle = "#FFCC66";
-        goban.fillRect(0, 0, size + 2 * padding, size + 2 * padding);
-      },
+      // Create the group for labels and lines
+      const labelGroup = document.createElementNS(svgNS, "g");
+      labelGroup.setAttributeNS(null, "class", "label");
+      svg.appendChild(labelGroup);
 
-      drawLines() {
-        for (let i = 0; i < 19; i++) {
-          this.drawSingleLine(i);
-        }
-      },
+      const linesGroup = document.createElementNS(svgNS, "g");
+      linesGroup.setAttributeNS(null, "class", "lines");
+      svg.appendChild(linesGroup);
 
-      drawSingleLine(i) {
-        const { goban } = contexts;
-        const { padding, cellSize, size } = BOARD_SETTINGS;
+      // Draw the lines of the board
+      for (let i = 0; i < boardSize; i++) {
+        const pos = offset + i * cellSize;
 
-        goban.beginPath();
+        // Horizontal line
+        const hLine = document.createElementNS(svgNS, "line");
+        hLine.setAttributeNS(null, "x1", offset);
+        hLine.setAttributeNS(null, "y1", pos);
+        hLine.setAttributeNS(null, "x2", offset + gridSize);
+        hLine.setAttributeNS(null, "y2", pos);
+        hLine.setAttributeNS(null, "stroke", "#000");
+        linesGroup.appendChild(hLine);
 
-        const drawCoords = [
-          [padding, padding + i * cellSize],
-          [size - padding - 2, padding + i * cellSize],
-          [padding + i * cellSize, padding],
-          [padding + i * cellSize, size - padding - 2],
-        ];
-
-        drawCoords.forEach(([x, y], index) => {
-          const action = index % 2 === 0 ? "moveTo" : "lineTo";
-          goban[action](x, y);
-        });
-
-        goban.strokeStyle = "#000";
-        goban.stroke();
-      },
-
-      drawLabels() {
-        const { goban } = contexts;
-        goban.font = "16px Arial";
-        goban.textAlign = "center";
-        goban.textBaseline = "middle";
-        goban.fillStyle = "#000";
-
-        for (let i = 0; i < 19; i++) {
-          this.drawSingleLabel(i);
-        }
-      },
-
-      drawSingleLabel(i) {
-        const { goban } = contexts;
-        const { padding, cellSize, letters } = BOARD_SETTINGS;
-        const offsetChar = 8;
-
-        goban.fillText(letters.charAt(i), padding + i * cellSize, cellSize * 19 - offsetChar);
-        goban.fillText(String(19 - i), 8, padding + i * cellSize);
-      },
-
-      drawStones(moves) {
-        const radius = this.getStoneRadius();
-
-        moves.forEach((row, y) => {
-          row.forEach((color, x) => {
-            if (color) this.drawSingleStone(x, y, radius, color);
-          });
-        });
-      },
-
-      drawSingleStone(x, y, radius, color) {
-        const { goban } = contexts;
-        const { padding, cellSize } = BOARD_SETTINGS;
-
-        goban.beginPath();
-        goban.arc(padding + x * cellSize, padding + y * cellSize, radius, 0, Math.PI * 2);
-        goban.strokeStyle = "black";
-        goban.lineWidth = 2;
-        goban.fillStyle = color === "b" ? "black" : "white";
-        goban.fill();
-        goban.stroke();
-      },
-
-      getStoneRadius() {
-        const { cellSize, stoneRadiusFactor } = BOARD_SETTINGS;
-        return cellSize / stoneRadiusFactor - 5;
-      },
-
-      drawLastMove(last) {
-        const { goban } = contexts;
-        const { padding, cellSize } = BOARD_SETTINGS;
-
-        const [unused, x, y] = last.move;
-        const color = last.color;
-
-        goban.beginPath();
-        goban.arc(padding + x * cellSize, padding + y * cellSize, 10, 0, Math.PI * 2);
-        goban.fillStyle = color;
-        goban.fill();
-      },
-
-      drawAIMoves(aiMoves) {
-        const radius = this.getStoneRadius();
-        const { goban } = contexts;
-        const { padding, cellSize } = BOARD_SETTINGS;
-
-        aiMoves.forEach(([color, x, y]) => {
-          goban.beginPath();
-          goban.arc(padding + x * cellSize, padding + y * cellSize, radius, 0, Math.PI * 2);
-          goban.strokeStyle = "black";
-          goban.lineWidth = 2;
-          goban.fillStyle = color;
-          goban.fill();
-          goban.stroke();
-        });
-      },
-
-      drawBoard({ moves, lastMove, aiMoves }) {
-        this.clearCanvas(contexts.goban);
-        this.drawBackground();
-        this.drawLines();
-        this.drawLabels();
-
-        if (!moves.length) return;
-
-        this.drawStones(moves);
-
-        if (lastMove) {
-          this.drawLastMove(lastMove);
-        }
-
-        // if (aiMoves && aiMoves.length) {
-        // 	this.drawAIMoves(aiMoves);
-        // }
-      },
-    };
-
-    function drawConfidence({ black, white }) {
-      const valueMultiplier = 2;
-      const offset = 30;
-      const rect = {
-        w: 368 * 2,
-        h: 50,
-        m: 368 / 2,
-        r: 15, // Radius for rounded corners
-      };
-      // const brightness = [1, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1];
-      const brightness = [1, 0.95, 0.9, 0.85];
-      let blackValuesTotals = 0;
-      let whiteValuesTotals = rect.w; // Initialize it to the end for white values
-
-      // Draw Rounded Rect Function
-      function drawRoundedRect(x, y, width, height, radius) {
-        contexts.confidence.beginPath();
-        contexts.confidence.moveTo(x + radius, y);
-        contexts.confidence.lineTo(x + width + 5 - radius, y);
-        contexts.confidence.arc(
-          x + width + 5 - radius,
-          y + radius,
-          radius,
-          1.5 * Math.PI,
-          2 * Math.PI,
-        );
-        contexts.confidence.lineTo(x + width + 5, y + height - radius);
-        contexts.confidence.arc(
-          x + width + 5 - radius,
-          y + height - radius,
-          radius,
-          0,
-          0.5 * Math.PI,
-        );
-        contexts.confidence.lineTo(x + radius, y + height);
-        contexts.confidence.arc(x + radius, y + height - radius, radius, 0.5 * Math.PI, Math.PI);
-        contexts.confidence.lineTo(x, y + radius);
-        contexts.confidence.arc(x + radius, y + radius, radius, Math.PI, 1.5 * Math.PI);
-        contexts.confidence.closePath();
-        contexts.confidence.stroke();
+        // Vertical line
+        const vLine = document.createElementNS(svgNS, "line");
+        vLine.setAttributeNS(null, "x1", pos);
+        vLine.setAttributeNS(null, "y1", offset);
+        vLine.setAttributeNS(null, "x2", pos);
+        vLine.setAttributeNS(null, "y2", offset + gridSize);
+        vLine.setAttributeNS(null, "stroke", "#000");
+        linesGroup.appendChild(vLine);
       }
 
-      function drawBlackValues(values) {
-        values.forEach((value, index) => {
-          const width = value * valueMultiplier;
-          const height = 50;
-          const color = blackColorFunc(index);
-          contexts.confidence.fillStyle = `rgb(${color.r + 25}, ${color.g + 25}, ${color.b + 25
-            })`;
-          contexts.confidence.fillRect(
-            (blackValuesTotals += width) - width + offset,
-            5,
-            width,
-            height - 10,
-          );
-        });
-      }
-
-      function drawWhiteValues(values) {
-        values.forEach((value, index) => {
-          const width = value * valueMultiplier;
-          const height = 50;
-          const color = whiteColorFunc(index);
-          contexts.confidence.fillStyle = `rgb(${color.r}, ${color.g}, ${color.b})`;
-          contexts.confidence.fillRect(
-            (whiteValuesTotals -= width) + offset,
-            5,
-            width,
-            height - 10,
-          );
-        });
-      }
-
-      function writeTotalScores(confidenceScore, inside, outside, color) {
-        contexts.confidence.font = "36px 'Playpen Sans'";
-        let x;
-        if (color === "black") {
-          x = offset + 25; // 50 as an example offset, you can adjust it
-          contexts.confidence.fillStyle = outside;
-          contexts.confidence.fillText(confidenceScore, x + 3, 38);
-          contexts.confidence.fillStyle = outside;
-          contexts.confidence.fillText(confidenceScore, x - 3, 38);
-          contexts.confidence.fillStyle = outside;
-          contexts.confidence.fillText(confidenceScore, x, 38 - 3);
-          contexts.confidence.fillStyle = outside;
-          contexts.confidence.fillText(confidenceScore, x, 38 + 3);
-          contexts.confidence.fillStyle = inside;
-          contexts.confidence.fillText(confidenceScore, x, 38); // slight offset for inside text
-        } else if (color === "white") {
-          x = rect.w - offset - 25; // 50 as an example offset, you can adjust it
-          contexts.confidence.fillStyle = outside;
-          contexts.confidence.fillText(confidenceScore, x + 3, 38);
-          contexts.confidence.fillStyle = outside;
-          contexts.confidence.fillText(confidenceScore, x - 3, 38);
-          contexts.confidence.fillStyle = outside;
-          contexts.confidence.fillText(confidenceScore, x, 38 - 3);
-          contexts.confidence.fillStyle = outside;
-          contexts.confidence.fillText(confidenceScore, x, 38 + 3);
-          contexts.confidence.fillStyle = inside;
-          contexts.confidence.fillText(confidenceScore, x, 38); // slight offset for inside text
-        }
-      }
-
-      const blackColorFunc = (index) => ({
-        r: 255 * (1 - brightness[index]),
-        g: 255 * (1 - brightness[index]),
-        b: 255 * (1 - brightness[index]),
+      // Add star points
+      const starPoints = [
+        { x: 3, y: 3 }, { x: 9, y: 3 }, { x: 15, y: 3 },
+        { x: 3, y: 9 }, { x: 9, y: 9 }, { x: 15, y: 9 },
+        { x: 3, y: 15 }, { x: 9, y: 15 }, { x: 15, y: 15 },
+      ];
+      starPoints.forEach(point => {
+        const circle = document.createElementNS(svgNS, "circle");
+        circle.setAttributeNS(null, "cx", offset + point.x * cellSize);
+        circle.setAttributeNS(null, "cy", offset + point.y * cellSize);
+        circle.setAttributeNS(null, "r", 5);
+        circle.setAttributeNS(null, "fill", "#000");
+        svg.appendChild(circle);
       });
 
-      const whiteColorFunc = (index) => ({
-        r: 255 * brightness[index],
-        g: 255 * brightness[index],
-        b: 255 * brightness[index],
-      });
+      // Add labels
+      for (let i = 0; i < boardSize; i++) {
+        const pos = offset + i * cellSize;
+        const number = boardSize - i;
+        const letter = String.fromCharCode('A'.charCodeAt(0) + (i >= 8 ? i + 1 : i)); // Skip 'I'
 
-      // Draw Dotted Line
-      contexts.confidence.strokeStyle = "black";
-      contexts.confidence.lineWidth = 2;
-      [0, 15, 30, 45].forEach((y) => {
-        contexts.confidence.strokeRect(offset + 368, y, 5, 10);
-      });
+        // Top letters
+        const topText = document.createElementNS(svgNS, "text");
+        topText.setAttributeNS(null, "x", pos);
+        topText.setAttributeNS(null, "y", offset / 2);
+        topText.setAttributeNS(null, "font-size", "21");
+        topText.setAttributeNS(null, "text-anchor", "middle");
+        topText.setAttributeNS(null, "dy", "0.35em");
+        topText.setAttributeNS(null, "stroke", "#080808");
+        topText.setAttributeNS(null, "fill", "#080808");
+        topText.textContent = letter;
+        labelGroup.appendChild(topText);
 
-      // Draw Black and White values
-      drawBlackValues(black.values);
-      drawWhiteValues(white.values);
+        // Bottom letters
+        const bottomText = topText.cloneNode(true);
+        bottomText.setAttributeNS(null, "y", viewBoxSize - offset / 2);
+        labelGroup.appendChild(bottomText);
 
-      //draw rounded rectangle
-      contexts.confidence.strokeStyle = "black";
-      contexts.confidence.lineWidth = 8;
-      drawRoundedRect(offset - 4, 2.5, rect.w, rect.h - 5, rect.r);
+        // Side numbers
+        const sideNumberLeft = document.createElementNS(svgNS, "text");
+        sideNumberLeft.setAttributeNS(null, "x", offset / 2);
+        sideNumberLeft.setAttributeNS(null, "y", pos);
+        sideNumberLeft.setAttributeNS(null, "font-size", "21");
+        sideNumberLeft.setAttributeNS(null, "text-anchor", "middle");
+        sideNumberLeft.setAttributeNS(null, "dy", "0.35em");
+        sideNumberLeft.setAttributeNS(null, "stroke", "#080808");
+        sideNumberLeft.setAttributeNS(null, "fill", "#080808");
+        sideNumberLeft.textContent = number;
+        labelGroup.appendChild(sideNumberLeft);
 
-      writeTotalScores(black.points, "black", "white", "black");
-      writeTotalScores(white.points, "white", "black", "white");
-    }
-
-    function drawInfo({ winrate, players, lead }) {
-      clearCanvas(contexts.info);
-
-      if (lead === "undefined") {
-        lead = `W: 0`;
+        const sideNumberRight = sideNumberLeft.cloneNode(true);
+        sideNumberRight.setAttributeNS(null, "x", viewBoxSize - offset / 2);
+        labelGroup.appendChild(sideNumberRight);
       }
 
-      function drawCircle({ x, y, r, color, percentage, text }) {
-        const startAngle = -Math.PI / 2;
-        const endAngle = startAngle + 2 * Math.PI * (percentage / 100);
 
-        contexts.info.beginPath();
-        contexts.info.arc(x, y, r, startAngle, endAngle);
-        contexts.info.lineTo(x, y);
-        contexts.info.closePath();
-        contexts.info.fillStyle = color;
-        contexts.info.fill();
+      const stonesGroup = document.createElementNS(svgNS, 'g');
+      stonesGroup.setAttributeNS(null, 'id', 'stonesGroup');
+      svg.appendChild(stonesGroup);
 
-        if (text) {
-          contexts.info.fillStyle = percentage <= 50 ? "black" : "white"; // Choose a color for the text
-          contexts.info.textAlign = "center";
-          contexts.info.textBaseline = "middle";
-          contexts.info.font = "29px Arial"; // Adjust font size and type as needed
-          contexts.info.fillText(text[0], x + 2, y + 2);
-          contexts.info.fillText(text[0], x - 2, y - 2);
-          contexts.info.fillText(text[0], x + 2, y - 2);
-          contexts.info.fillText(text[0], x - 2, y + 2);
+      // Create placeholder stones for each intersection
+      for (let i = 0; i < boardSize; i++) {
+        for (let j = 0; j < boardSize; j++) {
+          const posX = offset + i * cellSize;
+          const posY = offset + j * cellSize;
+          const stonePlaceholder = document.createElementNS(svgNS, 'image');
 
-          contexts.info.fillStyle = percentage > 50 ? "black" : "white";; // Choose a color for the text
-          contexts.info.textAlign = "center";
-          contexts.info.textBaseline = "middle";
-          contexts.info.font = "30px Arial"; // Adjust font size and type as needed
-          contexts.info.fillText(text[0], x, y);
+          stonePlaceholder.setAttributeNS(null, 'x', posX - cellSize / 2 * 0.99);
+          stonePlaceholder.setAttributeNS(null, 'y', posY - cellSize / 2 * 0.99);
+          stonePlaceholder.setAttributeNS(null, 'width', cellSize * 0.99);
+          stonePlaceholder.setAttributeNS(null, 'height', cellSize * 0.99);
+          stonePlaceholder.setAttributeNS('http://www.w3.org/1999/xlink', 'href', ''); // Empty href at first
+          stonePlaceholder.setAttributeNS(null, 'id', `stone-${i}-${j}`); // ID based on position
 
+          stonesGroup.appendChild(stonePlaceholder);
         }
       }
 
-      function drawWinRate(winrate) {
-        const whiteWinRate = winrate.human.white;
-        const blackWinRate = winrate.human.black;
-        drawCircle({ x: 400, y: 30 + 20, r: 50, color: "black", percentage: 100 });
-        drawCircle({ x: 400, y: 30 + 20, r: 50, color: "white", percentage: whiteWinRate });
-        drawCircle({
-          x: 400,
-          y: 30 + 20,
-          r: 40,
-          color: `rgb(${255 * whiteWinRate / 100}, ${255 * whiteWinRate / 100}, ${255 * whiteWinRate / 100})`,
-          percentage: 100,
-          text: [[`${whiteWinRate + "%"}`], [`${lead} `]],
-        });
-      }
-      function adjustFontSizeToFit(context, name, maxWidth) {
-        let fontSize = 40; // Starting font size
-        context.font = `${fontSize}px Arial`;
-
-        let textWidth = context.measureText(name).width;
-        while (textWidth > maxWidth && fontSize > 10) {
-          // Minimum font size set to 10px for readability
-          fontSize -= 1; // Decrement font size
-          context.font = `${fontSize}px Arial`;
-          textWidth = context.measureText(name).width;
-        }
-
-        return fontSize;
-      }
-
-      function drawPlayerNameLeft(name) {
-        const maxWidth = 300;
-        const fontSize = adjustFontSizeToFit(contexts.info, name, maxWidth);
-
-        const x = 20;
-        const y = 70;
-
-        contexts.info.fillStyle = "white";
-        contexts.info.textAlign = "left";
-        contexts.info.textBaseline = "middle";
-        contexts.info.font = `${fontSize}px Arial`;
-        contexts.info.fillText(name, x + 2, y + 2);
-        contexts.info.fillText(name, x - 2, y - 2);
-        contexts.info.fillText(name, x + 2, y - 2);
-        contexts.info.fillText(name, x - 2, y + 2);
-
-        contexts.info.fillStyle = "black";
-        contexts.info.textAlign = "left";
-        contexts.info.textBaseline = "middle";
-        contexts.info.font = `${fontSize}px Arial`;
-        contexts.info.fillText(name, x, y);
-      }
-
-      function drawPlayerNameRight(name) {
-        const canvasWidth = contexts.info.canvas.width;
-        const maxWidth = 300;
-        const fontSize = adjustFontSizeToFit(contexts.info, name, maxWidth);
-
-        const textWidth = contexts.info.measureText(name).width;
-        const x = canvasWidth / 2 - 20 - textWidth;
-        const y = 70;
-
-        contexts.info.fillStyle = "black";
-        contexts.info.textAlign = "left";
-        contexts.info.textBaseline = "middle";
-        contexts.info.font = `${fontSize}px Arial`;
-        contexts.info.fillText(name, x + 2, y + 2);
-        contexts.info.fillText(name, x - 2, y - 2);
-        contexts.info.fillText(name, x + 2, y - 2);
-        contexts.info.fillText(name, x - 2, y + 2);
-
-        contexts.info.fillStyle = "white";
-        contexts.info.textAlign = "left";
-        contexts.info.textBaseline = "middle";
-        contexts.info.font = `${fontSize}px Arial`;
-        contexts.info.fillText(name, x, y);
-      }
-      drawWinRate(winrate);
-      drawPlayerNameLeft(players.black.name);
-      drawPlayerNameRight(players.white.name);
+      const boardContainer = document.querySelector('.goboard');
+      boardContainer.innerHTML = ''; // Clear any existing content
+      boardContainer.appendChild(svg);
     }
 
-    function getColorForValue(value) {
-      value = Math.abs(value); // Focus on the magnitude
 
-      if (value < 1) {
-        return "green";
-      } else if (value >= 1 && value < 3) {
-        return "yellowgreen";
-      } else if (value >= 3 && value < 6) {
-        return "rgb(255,206,0)";
-      } else if (value >= 6 && value < 12) {
-        return "orange";
-      } else if (value >= 12 && value < 24) {
-        return "red";
-      } else {
-        return "purple"; // Any value 24 and above
-      }
+    function createScoreBar() {
+      const svgNS = "http://www.w3.org/2000/svg";
+      const width = 524;
+      const height = 38;
+      const totalBoxes = 10;
+      const dashWidth = 3; // Width of the dash
 
-      // The return "gray" will never be reached because of the conditions above,
-      // but you can keep it if you want to handle potential future cases.
-      return "gray";
-    }
+      // Create the main SVG element
+      const svg = document.createElementNS(svgNS, "svg");
+      svg.setAttributeNS(null, "width", "100%");
+      svg.setAttributeNS(null, "height", "100%");
 
-    function lastMoveColor({ winrate, current }) {
-      let value;
+      // Create a group for black points
+      const blackGroup = document.createElementNS(svgNS, "g");
+      svg.appendChild(blackGroup);
 
-      if (current.player === "B") {
-        value = Players.white - winrate.human.white;
-      } else {
-        value = Players.black - winrate.human.black;
-      }
+      // Create a group for white points
+      const whiteGroup = document.createElementNS(svgNS, "g");
+      svg.appendChild(whiteGroup);
 
-      Players = winrate.human; // Update the Players value.
+      // Calculate box width based on the total width and number of boxes
+      const boxWidth = width / totalBoxes;
 
-      return getColorForValue(value);
-    }
+      // Generate black points from left to right (1 to 0.1)
+      for (let i = totalBoxes - 1; i >= 0; i--) {
+        const box = document.createElementNS(svgNS, "rect");
+        box.setAttributeNS(null, "x", i * 0);
+        box.setAttributeNS(null, "y", 0);
+        box.setAttributeNS(null, "width", 0);
+        box.setAttributeNS(null, "height", height);
+        box.setAttributeNS(null, "id", `black-points-${i + 1}`)
 
-    function updateClock(current, black, white) {
-      clearCanvas(contexts.clock)
-      const clock = contexts.clock
-
-      function adjustFontSizeToFit(text, maxWidth) {
-        let fontSize = 40; // Starting font size
-        clock.font = `${fontSize}px Arial`;
-
-        let textWidth = clock.measureText(text).width;
-        while (textWidth > maxWidth && fontSize > 10) {
-          // Minimum font size set to 10px for readability
-          fontSize -= 1; // Decrement font size
-          clock.font = `${fontSize}px Arial`;
-          textWidth = clock.measureText(text).width;
-        }
-
-        return fontSize;
-      }
-
-      function drawBlackClockLeft(main, byo, periods) {
-        const maxWidth = 300;
-        const seconds = Math.floor(main % 60);
-        const addZero = seconds < 10 ? '0' : '';
-        const minutes = Math.floor(main / 60);
-        const text = `${minutes}:${addZero}${seconds}`;
-
-        const fontSize = adjustFontSizeToFit(text, maxWidth);
-        const x = 20;
-        const y = 70;
-
-        clock.fillStyle = "white";
-        clock.textAlign = "left";
-        clock.textBaseline = "middle";
-        clock.font = `${fontSize}px Arial`;
-        clock.fillText(text, x + 2, y + 2);
-        clock.fillText(text, x - 2, y - 2);
-        clock.fillText(text, x + 2, y - 2);
-        clock.fillText(text, x - 2, y + 2);
-
-        clock.fillStyle = "black";
-        clock.textAlign = "left";
-        clock.textBaseline = "middle";
-        clock.font = `${fontSize}px Arial`;
-        clock.fillText(text, x, y);
-      }
-
-      function drawWhiteClockRight(main, byo, periods) {
-        const canvasWidth = clock.canvas.width;
-        const maxWidth = 300;
-        const seconds = Math.floor(main % 60);
-        const addZero = seconds < 10 ? '0' : '';
-        const minutes = Math.floor(main / 60);
-        const text = `${minutes}:${addZero}${seconds}`;
-
-        const fontSize = adjustFontSizeToFit(text, maxWidth);
-        const textWidth = clock.measureText(text).width;
-        const x = canvasWidth / 2 - 20 - textWidth;
-        const y = 70;
-
-        clock.fillStyle = "black";
-        clock.textAlign = "left";
-        clock.textBaseline = "middle";
-        clock.font = `${fontSize}px Arial`;
-        clock.fillText(text, x + 2, y + 2);
-        clock.fillText(text, x - 2, y - 2);
-        clock.fillText(text, x + 2, y - 2);
-        clock.fillText(text, x - 2, y + 2);
-
-        clock.fillStyle = "white";
-        clock.textAlign = "left";
-        clock.textBaseline = "middle";
-        clock.font = `${fontSize}px Arial`;
-        clock.fillText(text, x, y);
-
-      }
-
-      let blackMain = black.thinking_time
-      let blackByo = black.period_time
-      let blackPeriod = black.periods
-
-      let whiteMain = white.thinking_time
-      let whiteByo = white.period_time
-      let whitePeriod = white.periods
-
-
-      drawBlackClockLeft(blackMain, blackByo, blackPeriod)
-      drawWhiteClockRight(whiteMain, whiteByo, whitePeriod)
-
-    }
-
-    function startCountdown(current, black, white) {
-      // This function starts the countdown and updates the clock every second
-      if (countdownInterval) clearInterval(countdownInterval); // Clear any existing intervals
-
-      countdownInterval = setInterval(() => {
-        // Decrement the thinking time of the current player
-        if (current === "black") {
-          if (black.thinking_time > 0) {
-            black.thinking_time--;
-          } else {
-            // Handle period time logic here if needed
-          }
+        let value
+        let modularI = i%10
+        if (modularI >= 7 && modularI <= 10) {
+          value = 1;
+        } else if (modularI >= 4 && modularI <= 7) {
+          value = 0.95;
+        } else if (modularI >= 1 && modularI <= 4) {
+          value = 0.85;
         } else {
-          if (white.thinking_time > 0) {
-            white.thinking_time--;
-          } else {
-            // Handle period time logic here if needed
-          }
+          value = 0.75;
         }
 
-        // Update the clock display
-        updateClock(current, black, white);
 
-        // You may want to implement logic to stop the interval when the game ends
-      }, 1000);
+
+        const aiScore = value;
+        const fillColor = `rgba(${10 * value}, ${10 * value}, ${10 * value}, ${aiScore})`;
+        box.setAttributeNS(null, "fill", fillColor);
+
+        blackGroup.appendChild(box);
+      }
+
+      // Generate white points from right to left (1 to 0.1)
+      for (let i = 0; i < totalBoxes; i++) {
+        const box = document.createElementNS(svgNS, "rect");
+        box.setAttributeNS(null, "x", (totalBoxes - i - 1) * 0);
+        box.setAttributeNS(null, "y", 0);
+        box.setAttributeNS(null, "width", 0);
+        box.setAttributeNS(null, "height", height);
+        box.setAttributeNS(null, "id", `white-points-${i + 1}`)
+
+        let value
+        if (i >= 7 && i <= 10) {
+          value = 1;
+        } else if (i >= 4 && i <= 7) {
+          value = 0.95;
+        } else if (i >= 1 && i <= 4) {
+          value = 0.85;
+        } else {
+          value = 0.74;
+        }
+
+        const aiScore = value;
+        const fillColor = `rgba(${235 * value}, ${235 * value}, ${235 * value}, ${aiScore})`;
+        box.setAttributeNS(null, "fill", fillColor);
+
+        whiteGroup.appendChild(box);
+      }
+
+
+      // Create a center dashed line
+      const centerDashLine = document.createElementNS(svgNS, "line");
+      centerDashLine.setAttributeNS(null, "x1", width / 2);
+      centerDashLine.setAttributeNS(null, "y1", 0);
+      centerDashLine.setAttributeNS(null, "x2", width / 2);
+      centerDashLine.setAttributeNS(null, "y2", height);
+      centerDashLine.setAttributeNS(null, "stroke", "black");
+      centerDashLine.setAttributeNS(null, "stroke-width", "3px");
+      centerDashLine.setAttributeNS(null, "stroke-dasharray", "3");
+      svg.appendChild(centerDashLine);
+
+      // Append the SVG to the document or a container element
+      const counteingContainer = document.querySelector('.counting');
+      counteingContainer.appendChild(svg);
     }
 
-    const pathSegments = window.location.pathname.split("/");
-    const type = pathSegments[1];
-    const id = pathSegments[2];
-    const eventName = `${type}/${id}`;
-    document.getElementById("title").textContent = eventName;
+    function addStone(x, y, color) {
 
-    // Socket Event Handling
-    socket.on("connect", () => {
-      console.log("connected");
-      console.log("Emitted to Game");
-      socket.emit("subscribe", { id: id });
+      const stoneId = `stone-${x}-${y}`;
+      const stone = document.getElementById(stoneId);
+      stone.setAttributeNS('http://www.w3.org/1999/xlink', 'href', color);
+    }
+
+    // Function to remove a stone
+    function removeStone(x, y) {
+      const stoneId = `stone-${x}-${y}`;
+      const stone = document.getElementById(stoneId);
+      stone.setAttributeNS('http://www.w3.org/1999/xlink', 'href', '');
+    }
+
+    function setScoreBar(blackScores, whiteScores) {
+      const boxWidth = 524;
+      const height = 38;
+
+      let blackTotal = 0;
+      let whiteTotal = 0;
+
+      // Update black scores
+      for (let i = 10; i >= 1; i--) {
+        const rect = document.getElementById(`black-points-${i}`);
+        const score = blackScores[i - 1];
+        const width = (score / 368) * boxWidth;
+        rect.setAttribute('width', width);
+        rect.setAttribute('x', blackTotal);
+        blackTotal += width - 0.2; // Adjusted here
+      }
+
+      // Update white scores
+      for (let i = 10; i >= 1; i--) {
+        const rect = document.getElementById(`white-points-${i}`);
+        const score = whiteScores[i - 1];
+        const width = (score / 368) * boxWidth;
+        const xPosition = boxWidth - whiteTotal - width + 1; // Adjusted here
+        rect.setAttribute('width', width);
+        rect.setAttribute('x', xPosition);
+        whiteTotal += width - 0.2; // Adjusted here
+      }
+
+      elements.confidence.text.black.innerText = blackScores.reduce((accumulator, currentValue) => accumulator + currentValue, 0);
+      elements.confidence.text.white.innerText = whiteScores.reduce((accumulator, currentValue) => accumulator + currentValue, 0);
+
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+      createGoBoardSVG();
+      createScoreBar();
+
+      // Wait for the next 'tick' to ensure the SVG is fully loaded
+      setTimeout(function () {
+        // Add a black stone at position (3, 3)
+        addStone(3, 3, BLACK);
+        addStone(4, 3, WHITE);
+
+        // Add a white stone at position (16, 16)
+        addStone(15, 15, WHITE);
+        removeStone(4, 3);
+      }, 0);
+
+      // Call setScoreBar after a short delay to ensure the SVG is fully loaded
+      setTimeout(function () {
+        function randomlyGenerate10() {
+          let numbers = [];
+
+          for (let i = 0; i < 10; i++) {
+            // Generate a random number between 1 and 20
+            let randomNumber = Math.floor(Math.random() * 20) + 1;
+
+            // Add the random number to the array
+            numbers.push(randomNumber);
+          }
+
+          return numbers;
+        }
+
+        const blackP = randomlyGenerate10();
+        const whiteP = randomlyGenerate10();
+        setScoreBar(blackP, whiteP);
+      }, 100); // Adjust the delay as needed
     });
-    socket.on("error", (err) => {
-      console.log(err);
-    });
-
-    socket.on("disconnect", () => {
-      console.log("disconnected");
-    });
-
-    socket.on(eventName, (gameData) => {
-      const jsonData = JSON.parse(gameData);
-      const data = jsonData.data;
-      console.log(data);
-      Object.values(contexts).forEach((context) => { if (context != contexts.clock) { clearCanvas(context) } });
-      data.last.color = lastMoveColor({ winrate: data.winrate, current: data.current });
-      GoBoard.drawBoard({ moves: data.state, lastMove: data.last, aiMoves: data.ai.colors });
-      drawConfidence({ black: data.confidence.black, white: data.confidence.white });
-      drawInfo({ winrate: data.winrate, players: data.players, lead: data.lead });
 
 
-    });
 
-    // The socket.on callback where you will call startCountdown to start the timer
-    socket.on(`clock/${id}`, (data) => {
-      const jsonData = JSON.parse(data);
-      const clockData = jsonData.data;
-      const current = clockData.current_player === clockData.black_player_id ? "black" : "white";
-      const black = clockData.black_time;
-      const white = clockData.white_time;
-
-      startCountdown(current, black, white);
-    });
 
   </script>
+
 </body>
 
 </html>

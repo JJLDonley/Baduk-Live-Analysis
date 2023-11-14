@@ -33,7 +33,7 @@ const stringMovesToCoordinates = (moveString) => {
 	}
 
 	const moves = pairs.map((pair, i) => {
-		if(pair[0] === "." && pair[1] === "."){
+		if (pair[0] === "." && pair[1] === ".") {
 			return null;
 		}
 		const x_num = coordinates.indexOf(pair[0]);
@@ -53,8 +53,8 @@ function formatGameMoveData(submission, moves, currentColor = "b") {
 			const formatedMoves = [];
 			moves.forEach((move, index) => {
 				const color = index % 2 === 0 ? "b" : "w";
-				const x = letters[move[0]];
-				const y = 19 - move[1];
+				const x = moves[0] == -1 ? 'pass' : letters[move[0]];
+				const y = moves[1] == -1 ? 'pass' : 19 - move[1];
 				formatedMoves.push([color, x, y]);
 			});
 			return formatedMoves;
@@ -62,8 +62,8 @@ function formatGameMoveData(submission, moves, currentColor = "b") {
 
 		case "move": {
 			const color = currentColor;
-			const x = letters[moves[0]];
-			const y = 19 - moves[1];
+			const x = moves[0] == -1 ? 'pass' : letters[moves[0]];
+			const y = moves[1] == -1 ? 'pass' : 19 - moves[1];
 			const formatedMoves = [color, x, y];
 			return formatedMoves;
 		}
@@ -112,7 +112,7 @@ function formatGameStateData(type, data) {
 						rank: WR,
 					},
 				},
-				current: formatedMoves.length % 2 == 0 ? 'b':'w' ,
+				current: formatedMoves.length % 2 == 0 ? 'b' : 'w',
 			};
 
 			GAMES[id] = new GameEntity(gamedata);
@@ -187,6 +187,14 @@ function setupOGSListeners(type, id) {
 			};
 			BES.emit(clockEmitID, JSON.stringify(payload));
 		});
+
+		OGS.on("game/" + id + "/phase", (data) => {
+			console.log(data)
+			if (data === "finished") {
+				OGS.send(["game/disconnect", { game_id: id }])
+			}
+		})
+
 	} else if (type === "review") {
 		OGS.on("review/" + id + "/r", (data) => {
 			if (!data.m) {
@@ -214,6 +222,12 @@ function connectLiveGame(type, id) {
 			});
 
 			OGS.on("game/" + id + "/gamedata", (data) => {
+				if(data.phase === "finished") {
+					console.log('game has finished') 
+					OGS.send(["game/disconnect", { game_id: id }])
+					return
+				}
+
 				const MOVES = formatGameStateData(type, data);
 				if (MOVES == undefined) {
 					console.log(`Game: ${GAMES[id].id} doesn't have moves yet`);
@@ -278,7 +292,7 @@ APP.get("/:type/:id", (req, res) => {
 	res.sendFile(path.join(__dirname, "game.html"));
 });
 
-APP.get("/", (req, res) => {});
+APP.get("/", (req, res) => { });
 
 BES.on("connection", (socket) => {
 	console.log("Frontend client connected");
