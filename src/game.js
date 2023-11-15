@@ -223,19 +223,6 @@ class GameEntity {
 		whiteValues = whiteValues.map((value) => Math.round(value));
 		whiteValues[0] += 7;
 
-		blackValues = [
-			blackValues[0] + blackValues[1] + blackValues[2],
-			blackValues[3] + blackValues[4] + blackValues[5],
-			blackValues[6] + blackValues[7],
-			blackValues[8] + blackValues[9],
-		];
-		whiteValues = [
-			whiteValues[0] + whiteValues[1] + whiteValues[2],
-			whiteValues[3] + whiteValues[4] + whiteValues[5],
-			whiteValues[6] + whiteValues[7],
-			whiteValues[8] + whiteValues[9],
-		];
-
 		confidence.black = {
 			values: blackValues,
 			territory:
@@ -354,6 +341,8 @@ class Board {
 	}
 
 	playMove(move) {
+		if(move[1] == -1) return;
+		
 		const color = move[0];
 		const oppositeColor = color === "b" ? "w" : "b";
 

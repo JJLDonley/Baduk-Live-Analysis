@@ -1,4 +1,5 @@
 const { v4: uuidv4 } = require("uuid");
+const express = require("express");
 const path = require("path");
 const Queue = require("./src/queue.js");
 const KataGo = require("./src/ai.js");
@@ -176,6 +177,9 @@ function setupOGSListeners(type, id) {
 			GAMES[id].liveMoves = list;
 			QUEUE.process(GAMES[id], UUID, QUERIES, MOVES, AI, BES);
 			GAMES[id].queries++;
+
+			let payload = {board: GAMES[id].board.state(MOVES), move:data.move}
+			BES.emit(`board/${id}`, JSON.stringify(payload))
 		});
 
 		OGS.on("game/" + id + "/clock", (data) => {
@@ -205,6 +209,9 @@ function setupOGSListeners(type, id) {
 			const QUERIES = GAMES[id].queries;
 			QUEUE.process(GAMES[id], UUID, QUERIES, MOVES, AI, BES);
 			GAMES[id].queries++;
+
+			let payload = {board: GAMES[id].board.state(MOVES), move:MOVES[MOVES.length-1]}
+			BES.emit(`board/${id}`, JSON.stringify(payload))
 		});
 	}
 
@@ -238,6 +245,8 @@ function connectLiveGame(type, id) {
 				QUEUE.process(GAMES[id], UUID, QUERIES, MOVES, AI, BES);
 				GAMES[id].queries++;
 				setupOGSListeners(type, id);
+				let payload = {board: GAMES[id].board.state(MOVES), move:data.moves[data.moves.length - 1]}
+				BES.emit(`board/${id}`, JSON.stringify(payload))
 			});
 			break;
 		case "review":
@@ -265,6 +274,9 @@ function connectLiveGame(type, id) {
 				QUEUE.process(GAMES[id], UUID, QUERIES, MOVES, AI, BES);
 				GAMES[id].queries++;
 				setupOGSListeners(type, id);
+
+				let payload = {board: GAMES[id].board.state(MOVES), move:MOVES[MOVES.length-1]}
+				BES.emit(`board/${id}`, JSON.stringify(payload))
 			});
 			break;
 		default:
@@ -272,11 +284,13 @@ function connectLiveGame(type, id) {
 	}
 }
 
+APP.use(express.static(path.join(__dirname, "web")))
 // Express route
-APP.get("/:type/:id", (req, res) => {
-	let type = req.params.type;
-	const id = req.params.id;
+APP.get("/", (req, res) => {
+	let type = req.query.type;
+	const id = req.query.id;
 
+	console.log(type, id)
 	// Validate the type
 	if (!["game", "demo", "review"].includes(type)) {
 		return res.status(400).send("Error: Not a proper type.");
@@ -288,18 +302,17 @@ APP.get("/:type/:id", (req, res) => {
 	if (!GAMES[id]) {
 		connectLiveGame(type, id);
 	}
-
-	res.sendFile(path.join(__dirname, "game.html"));
 });
-
-APP.get("/", (req, res) => { });
 
 BES.on("connection", (socket) => {
 	console.log("Frontend client connected");
 
 	socket.on("subscribe", (game_id) => {
 		const id = game_id["id"]; // Extract id directly from game_id
+		const type = game_id["type"]; // Extract id directly from game_id
 
+		console.log(id, type)
+		console.log(game_id)
 		if (GAMES[id]) {
 			const game = GAMES[id];
 			const gameEmitID = `${game.type}/${game.id}`;
@@ -312,6 +325,8 @@ BES.on("connection", (socket) => {
 			};
 			console.log("Emitted: " + game.data());
 			BES.emit(gameEmitID, JSON.stringify(payload));
+		} else {
+			connectLiveGame(type, id);
 		}
 	});
 
