@@ -11,6 +11,7 @@ class GameEntity {
 		this.uuid = uuidv4();
 		this.state = [];
 		this.board = new Board();
+		this.handicap = []
 		this.komi = 7.5;
 		this.current = {
 			player: data.current,
