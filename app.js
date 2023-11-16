@@ -196,6 +196,7 @@ function setupOGSListeners(type, id) {
 			console.log(data)
 			if (data === "finished") {
 				OGS.send(["game/disconnect", { game_id: id }])
+				BES.emit("game/" + id + "/finished", {finished: 'finished'})
 			}
 		})
 
@@ -325,6 +326,8 @@ BES.on("connection", (socket) => {
 			};
 			console.log("Emitted: " + game.data());
 			BES.emit(gameEmitID, JSON.stringify(payload));
+			let payload2 = {board: game.state, move: [game.last.move[1], game.last.move[2]]}
+			BES.emit(`board/${id}`, JSON.stringify(payload2))
 		} else {
 			connectLiveGame(type, id);
 		}

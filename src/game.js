@@ -342,7 +342,7 @@ class Board {
 	}
 
 	playMove(move) {
-		if(move[1] == -1) return;
+		if(move[0] == -1 || move[0] == 'undefined' || move[0] == null) return;
 		
 		const color = move[0];
 		const oppositeColor = color === "b" ? "w" : "b";

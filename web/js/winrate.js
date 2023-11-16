@@ -1,11 +1,10 @@
 import { WINRATE_OVER, WINRATE_PIE, WINRATE_TEXT } from "./constants.js";
-
-export function updateWinrate(winrate) {
+import { getColorForValue } from "./board.js";
+export function updateWinrate(winrate, lastMoveValue, color = '') {
     let { black, white } = winrate;
 
     // Convert white percentage to grayscale for background
-    let grayScaleValue = Math.round(155);
-    WINRATE_OVER.style.backgroundColor = `rgb(${grayScaleValue}, ${grayScaleValue}, ${grayScaleValue})`;
+    WINRATE_OVER.style.backgroundColor = color == '' ? getColorForValue(lastMoveValue) : color;
 
     // Invert grayscale value for text color
     let textColor =  white > black ? `white` : `black`;

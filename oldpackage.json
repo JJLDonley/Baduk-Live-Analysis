@@ -8,7 +8,7 @@
 		"setup": "setup_katago.bat",
 		"start/linux": "IS_LINUX=true node app.js"
 	},
-	"author": "Jeremiah Donley",
+	"author": "",
 	"license": "ISC",
 	"dependencies": {
 		"express": "^4.18.2",

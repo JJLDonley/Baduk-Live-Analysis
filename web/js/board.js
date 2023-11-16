@@ -75,7 +75,7 @@ export function updateBoard(board) {
     }
 }
 
-function getColorForValue(value) {
+export function getColorForValue(value) {
     value = Math.abs(value); // Focus on the magnitude
 
     if (value < 1) {
@@ -97,12 +97,12 @@ function getColorForValue(value) {
     return "gray";
   }
 
-  export function updateCurrentMoveColor(last, lastMoveValue) {
+  export function updateCurrentMoveColor(last, lastMoveValue, color = '') {
     let [player, x, y ] = last.move;
     let currentMarkers = document.getElementsByClassName(`current-move-${x}-${y}`);
     
     if (currentMarkers.length > 0) {
-        currentMarkers[0].setAttribute("fill", getColorForValue(lastMoveValue));
+        currentMarkers[0].setAttribute("fill", color == '' ? getColorForValue(lastMoveValue) : color);
     } else {
         return;
     }
