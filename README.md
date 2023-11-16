@@ -73,13 +73,15 @@ Choose between `Eigen-windows` for your CPU KataGo, commands are all the same, s
    - Ensure you've already run `npm run setup` before the first use of `npm start`.
 
 ## Linux
-
+### EC2
+Use Ubuntu 20.04 and security group "BLA"
 - Worked: t2.2xlarge
 - Did not work: t2.micro
 
 ### libzip5
 
 `wget http://mirrors.kernel.org/ubuntu/pool/universe/libz/libzip/libzip5_1.5.1-0ubuntu1_amd64.deb`
+
 `sudo apt install ./libzip5_1.5.1-0ubuntu1_amd64.deb`
 
 ### KataGo
@@ -89,6 +91,7 @@ Choose between `Eigen-windows` for your CPU KataGo, commands are all the same, s
 ### git
 
 `sudo apt install git-all`
+
 `git clone https://github.com/WeiQiPro/Baduk-Live-Analysis.git`
 
 ### npm
