@@ -43,7 +43,7 @@ function start() {
 }
 
 function setupSocket() {
-  APP.socket = io("http://localhost:2468");
+  APP.socket = io("0.0.0.0:2468");
   const queryParams = new URLSearchParams(window.location.search);
   const type = queryParams.get('type');
   const id = queryParams.get('id');
