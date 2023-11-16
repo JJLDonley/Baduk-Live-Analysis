@@ -368,6 +368,6 @@ OGS.on("error", (error) => {
 });
 
 // Start the server
-HTTP_SERVER.listen(PORT, () => {
+HTTP_SERVER.listen(PORT, '0.0.0.0', () => {
 	console.log(`Server running on http://localhost:${PORT}`);
 });
