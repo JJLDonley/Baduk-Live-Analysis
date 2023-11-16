@@ -78,6 +78,7 @@ Use Ubuntu 20.04 and security group "BLA"
 - Worked: t2.2xlarge
 - Did not work: t2.micro
 
+`sudo apt update`
 ### libzip5
 
 `wget http://mirrors.kernel.org/ubuntu/pool/universe/libz/libzip/libzip5_1.5.1-0ubuntu1_amd64.deb`
@@ -90,7 +91,7 @@ Use Ubuntu 20.04 and security group "BLA"
 
 ### git
 
-`sudo apt install git-all`
+You might not need this: `sudo apt install git-all`
 
 `git clone https://github.com/WeiQiPro/Baduk-Live-Analysis.git`
 
