@@ -79,6 +79,8 @@ Use Ubuntu 20.04 and security group "BLA"
 - Did not work: t2.micro
 
 `sudo apt update`
+
+`sudo apt install unzip`
 ### libzip5
 
 `wget http://mirrors.kernel.org/ubuntu/pool/universe/libz/libzip/libzip5_1.5.1-0ubuntu1_amd64.deb`
