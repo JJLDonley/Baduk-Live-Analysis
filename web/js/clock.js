@@ -73,14 +73,14 @@ function updateClock(current, black, white) {
 	let blackMinutes = Math.floor(black.thinking_time / 60);
 	let blackDisplay =
 		black.thinking_time > 0
-			? current == "black"
-				? `<span class="large-text">${blackMinutes}:${
-						blackSeconds < 10 ? "0" : ""
-				  }${blackSeconds}</span>`
-				: `${blackMinutes}:${blackSeconds < 10 ? "0" : ""}${blackSeconds}`
-			: black.period_time_left != 0
-			? `${black.periods} x <span class="large-text">${black.period_time_left.toFixed(0)}</span>`
-			: `-0`;
+			? `${blackMinutes}:${blackSeconds < 10 ? "0" : ""}${blackSeconds}`
+			: black.period_time_left > 0
+			? `${black.period_time_left.toFixed(0) < 10 ? "0" : ""}${black.period_time_left.toFixed(
+					0,
+			  )}<span class="small-text"> x${black.periods} </span>`
+			: black.periods > 0
+			? `-0 <span class="small-text"> x${black.periods} </span>`
+			: `-0 <span class="small-text"> -0 </span>`;
 
 	// Update black clock display using innerHTML
 	BLACK_CLOCK.innerHTML = blackDisplay;
@@ -90,14 +90,14 @@ function updateClock(current, black, white) {
 	let whiteMinutes = Math.floor(white.thinking_time / 60);
 	let whiteDisplay =
 		white.thinking_time > 0
-			? current == "white"
-				? `<span class="large-text">${whiteMinutes}:${
-						whiteSeconds < 10 ? "0" : ""
-				  }${whiteSeconds}</span>`
-				: `${whiteMinutes}:${whiteSeconds < 10 ? "0" : ""}${whiteSeconds}`
-			: white.period_time_left != 0
-			? `<span class="large-text">${white.period_time_left.toFixed(0)}</span> x ${white.periods}`
-			: `-0`;
+			? `${whiteMinutes}:${whiteSeconds < 10 ? "0" : ""}${whiteSeconds}`
+			: white.period_time_left > 0
+			? `${white.period_time_left.toFixed(0) < 10 ? "0" : ""}${white.period_time_left.toFixed(
+					0,
+			  )}<span class="small-text"> x${white.periods} </span>`
+			: white.periods > 0
+			? `-0 <span class="small-text"> x${white.periods} </span>`
+			: `-0 <span class="small-text"> -0 </span>`;
 
 	// Update white clock display using innerHTML
 	WHITE_CLOCK.innerHTML = whiteDisplay;

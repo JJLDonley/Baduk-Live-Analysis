@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 	<head>
+		<base href="/">
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<title>Baduk Analysis</title>
@@ -10,6 +11,11 @@
 		/>
 		<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
 		<style>
+			@font-face {
+				font-family: "ClockFont";
+				src: url("./assets/alarm clock.ttf") format("truetype");
+			}
+
 			body {
 				background-color: #00ff00;
 			}
@@ -103,15 +109,16 @@
 
 			#black-clock,
 			#white-clock {
-				font-size: 32px;
-        margin-bottom: -4px;
+        font-family: 'ClockFont', Roboto;
+				font-size: 40px;
+				margin-bottom: -4px;
 			}
-
+      
 			.goboard {
 				width: 524px;
 				height: 524px;
 				background-image: url(https://ai-sensei.com/img/kaya14d.jpg);
-        margin-top: 8px;
+				margin-top: 8px;
 			}
 
 			.counting {
@@ -151,8 +158,8 @@
 				color: white;
 			}
 
-			.large-text {
-				font-size: 1.5em; /* 1.5 times larger than the surrounding text */
+			.small-text {
+				font-size: 0.8em; /* 1.5 times larger than the surrounding text */
 			}
 		</style>
 	</head>
@@ -191,11 +198,10 @@
 		<script type="module" src="js/board.js"></script>
 		<script type="module" src="js/clock.js"></script>
 		<script type="module" src="js/players.js"></script>
-		<script type="module" src="js/socket.js"></script>
 		<script type="module" src="js/app.js"></script>
 		<script type="module">
 			import { APP } from "./js/app.js";
-
+		
 			document.addEventListener("DOMContentLoaded", function () {
 				APP.start();
 			});

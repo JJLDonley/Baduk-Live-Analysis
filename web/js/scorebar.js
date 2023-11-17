@@ -5,6 +5,8 @@ export function setScoreBar(blackScores, whiteScores) {
     const WHITE_BACK = document.getElementById('white-points-back')
     const boxWidth = 524;
     const height = 38;
+
+    console.log({blackScores, whiteScores})
   
     let blackTotal = 0;
     let whiteTotal = 0;
@@ -17,7 +19,7 @@ export function setScoreBar(blackScores, whiteScores) {
       rect.setAttribute('width', width);
       rect.setAttribute('height', height);
       rect.setAttribute('x', blackTotal);
-      blackTotal += width - 0.2;
+      blackTotal += width != 0 ? width - 0.2 : width;
     }
   
     // Update white scores

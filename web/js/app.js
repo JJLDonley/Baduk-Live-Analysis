@@ -3,8 +3,10 @@ import { startCountdown } from "./clock.js";
 import { updateBoard, markCurrentMove, updateCurrentMoveColor } from "./board.js";
 import { updateWinrate } from "./winrate.js";
 import { updatePlayerInfomation } from "./players.js";
+import { WINRATE_OVER } from "./constants.js";
 export const APP = {};
 
+window.APP = APP;
 APP.start = start;
 APP.setupSocket = setupSocket;
 APP.previous = {};
@@ -17,13 +19,12 @@ function start() {
 	//handle ai evaluations
 	APP.socket.on(APP.event, (data) => {
 		data = JSON.parse(data).data;
-		console.log(data);
 		setPreviousAndCurrent(data.current.player, data.winrate.human);
 		updatePlayerInfomation(data.players.black.name, data.players.white.name);
 		setScoreBar(data.confidence.black.values, data.confidence.white.values);
 		if (data.ai.colors[0][1] == data.last.move[1] && data.ai.colors[0][1] == data.last.move[1]) {
-			updateWinrate(data.winrate.human, APP.lastMoveValue, 'blue');
-			updateCurrentMoveColor(data.last, APP.lastMoveValue, 'blue');
+			updateWinrate(data.winrate.human, APP.lastMoveValue, "blue");
+			updateCurrentMoveColor(data.last, APP.lastMoveValue, "blue");
 		} else {
 			updateWinrate(data.winrate.human, APP.lastMoveValue);
 			updateCurrentMoveColor(data.last, APP.lastMoveValue);
@@ -42,26 +43,25 @@ function start() {
 	//handle board
 	APP.socket.on(APP.board, (data) => {
 		data = JSON.parse(data);
-    console.log("Board: ", data)
 		updateBoard(data.board);
 		markCurrentMove(data.move);
+		WINRATE_OVER.style.backgroundColor = "rgb(145, 145, 145";
 	});
 
-  APP.socket.on(APP.finished, (data) => {
-
-  })
+	APP.socket.on(APP.finished, (data) => {});
 }
 
 function setupSocket() {
 	APP.socket = io("localhost:2468");
-	const queryParams = new URLSearchParams(window.location.search);
-	const type = queryParams.get("type");
-	const id = queryParams.get("id");
+	const path = window.location.pathname;
+	const pathSegments = path.split("/").filter((segment) => segment);
+	const type = pathSegments[0];
+	const id = pathSegments[1];
 
 	APP.event = `${type}/${id}`;
 	APP.clock = `clock/${id}`;
 	APP.board = `board/${id}`;
-  APP.finished = `${type}/${id}/finished`
+	APP.finished = `${type}/${id}/finished`;
 
 	APP.socket.on("connect", () => {
 		console.log("connected");

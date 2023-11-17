@@ -21,6 +21,7 @@ class Queue {
 
 		try {
 			const query = await ai.query(uuid, queries, moves);
+			console.log(`Query processed for Game::${game.id}`)
 			await game.analysis(query, moves);
 
 			const gameEmitID = `${game.type}/${game.id}`;
@@ -29,7 +30,6 @@ class Queue {
 				type: gameEmitID,
 				data: game.data(),
 			};
-			console.log("Emitted: " + game.data());
 			BES.emit(gameEmitID, JSON.stringify(payload));
 		} catch (error) {
 			console.error("Error processing query:", error);

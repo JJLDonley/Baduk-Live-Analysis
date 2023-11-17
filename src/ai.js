@@ -1,102 +1,95 @@
 const { spawn } = require("child_process");
+const readline = require('readline');
 
 class KataGo {
-	constructor(AIEXE, AICONFIG, AIMODEL) {
-		this.engine = spawn(AIEXE, ["analysis", "-config", AICONFIG, "-model", AIMODEL]);
+    constructor(AIEXE, AICONFIG, AIMODEL) {
+        this.engine = spawn(AIEXE, ["analysis", "-config", AICONFIG, "-model", AIMODEL]);
+        this.totalQueries = 1;
+        this.stderrThread = null;
+        this.startErrorThread();
 
-		this.totalQueries = 1;
-		this.stderrThread = null;
-		this.startErrorThread();
-	}
+        this.pendingQueries = [];
+        this.rl = readline.createInterface({
+            input: this.engine.stdout,
+            crlfDelay: Infinity
+        });
 
-	startErrorThread() {
-		this.stderrThread = setInterval(() => {
-			const data = this.engine.stderr.read();
-			if (data) {
-				console.log("KataGo: ", data.toString());
-			}
-		}, 100);
-	}
+        this.rl.on('line', this.handleLine.bind(this));
+    }
 
-	moveToString(move) {
-		const Letters = "ABCDEFGHJKLMNOPQRST";
-		const Numbers = Array.from({ length: 19 }, (_, i) => 19 - i);
+    startErrorThread() {
+        this.stderrThread = setInterval(() => {
+            const data = this.engine.stderr.read();
+            if (data) {
+                console.log("KataGo: ", data.toString());
+            }
+        }, 100);
+    }
 
-		const [x, y] = move;
-		const col = Letters[x] || "";
-		const row = Numbers[y] || "";
-		return col + row;
-	}
+    moveToString(move) {
+        const Letters = "ABCDEFGHJKLMNOPQRST";
+        const Numbers = Array.from({ length: 19 }, (_, i) => 19 - i);
 
-	queryHash(moves, maxVisits = null) {
-		let query = {
-			id: String(this.totalQueries),
-			moves: moves.map(([color, x, y]) => [color, `${x}${y}`]),
-			rules: "chinese",
-			komi: 7.5,
-			boardXSize: 19,
-			boardYSize: 19,
-			includePolicy: true,
-			kata_analysis: true,
-			includeOwnership: true,
-		};
+        const [x, y] = move;
+        const col = Letters[x] || "";
+        const row = Numbers[y] || "";
+        return col + row;
+    }
 
-		if (maxVisits !== null) {
-			query.maxVisits = maxVisits;
-		}
+    queryHash(moves, maxVisits = null) {
+        let query = {
+            id: String(this.totalQueries),
+            moves: moves.map(([color, x, y]) => [color, `${x}${y}`]),
+            rules: "chinese",
+            komi: 7.5,
+            boardXSize: 19,
+            boardYSize: 19,
+            includePolicy: true,
+            kata_analysis: true,
+            includeOwnership: true,
+        };
 
-		this.totalQueries++;
+        if (maxVisits !== null) {
+            query.maxVisits = maxVisits;
+        }
 
-		return query;
-	}
+        this.totalQueries++;
 
-	async query(uuid, queries, moves, maxRetries = 3) {
-		const listOfMoves = moves;
-		const gameQueryID = uuid + ": " + queries;
-		const query = this.queryHash(listOfMoves);
+        return query;
+    }
 
-		this.engine.stdin.write(JSON.stringify(query) + "\n");
+    async query(uuid, queries, moves) {
+        const gameQueryID = uuid + ": " + queries;
+        const query = this.queryHash(moves);
 
-		return new Promise((resolve, reject) => {
-			const tryParse = (data, retries = 0) => {
-				try {
-					const buffer = data;
-					const jsonString = buffer.toString();
-					const response = JSON.parse(jsonString);
-					resolve(response);
-				} catch (error) {
-					if (retries < maxRetries) {
-						console.warn(
-							"query: ",
-							gameQueryID,
-							`Error parsing JSON. Retrying... (${retries + 1}/${maxRetries})`,
-						);
-						tryParse(data, retries + 1); // Recursive call
-					} else {
-						console.error("query: ", gameQueryID, " Error parsing JSON. Max retries reached.");
-						reject("failed to parse"); // Reject the promise if max retries reached
-					}
-				}
-			};
+        return new Promise((resolve, reject) => {
+            this.pendingQueries.push({ resolve, reject });
+            this.engine.stdin.write(JSON.stringify(query) + "\n");
+        });
+    }
 
-			this.engine.stdout.once("data", (data) => {
-				tryParse(data);
-			});
+    handleLine(line) {
+        try {
+            const response = JSON.parse(line);
+            if (this.pendingQueries.length > 0) {
+                const { resolve } = this.pendingQueries.shift();
+                resolve(response);
+            }
+        } catch (error) {
+            console.error("Error parsing JSON: ", error);
+            if (this.pendingQueries.length > 0) {
+                const { reject } = this.pendingQueries.shift();
+                reject(error);
+            }
+        }
+    }
 
-			this.engine.once("error", (error) => {
-				reject(error);
-			});
-		}).catch((error) => {
-			console.error("query: ", gameQueryID, "Error occurred while querying:");
-			throw error; // Re-throw the error to propagate it to the caller
-		});
-	}
-
-	close() {
-		this.engine.stdin.end();
-		clearInterval(this.stderrThread);
-		console.log("Closing KataGo Engine");
-	}
+    close() {
+        this.engine.stdin.end();
+        clearInterval(this.stderrThread);
+        this.rl.close();
+        console.log("Closing KataGo Engine");
+    }
 }
 
 module.exports = KataGo;

@@ -65,10 +65,9 @@ class GameEntity {
 	}
 
 	async analysis(query, moves) {
-		console.log(`Starting Analysis for ${this.name}: ${this.queries}`);
 
 		this.moves = moves;
-		this.current.player = query["rootInfo"]["currentPlayer"];
+		this.current.player = query["rootInfo"]["currentPlayer"] || this.moves.length % 2 == 0 ? 'B' : 'W';
 		this.current.move = this.moves.length;
 
 		this.last.move = this.moves[this.moves.length - 1];
@@ -109,7 +108,7 @@ class GameEntity {
     }
     
 
-		this.state = this.board.state(this.moves);
+		this.state = this.board.state(this.liveMoves);
 	}
 
 	aiMoveToArrayCoordinates(aiMove, color) {
@@ -342,9 +341,13 @@ class Board {
 	}
 
 	playMove(move) {
-		if(move[0] == -1 || move[0] == 'undefined' || move[0] == null) return;
+		if(typeof move[0] != "string") return;
+		if(typeof move[1] != "string") return;
+		if(typeof move[2] != "number") return;
 		
 		const color = move[0];
+		if(color == 'undefined') return;
+
 		const oppositeColor = color === "b" ? "w" : "b";
 
 		const letters = "abcdefghjklmnopqrst";
@@ -358,7 +361,11 @@ class Board {
 		const x = this.size - 1 - initialY;
 
 		// Place the stone
-		this.grid[x][y] = color;
+		try {
+			this.grid[x][y] = color;
+		} catch (error) {
+			console.error(`Error setting [${x}, ${y}] & move: ${move}: `, error)
+		}
 
 		// Find groups and remove them if their liberties are zero, only for the opposite color
 		const groups = this.findGroups();
