@@ -52,7 +52,8 @@ function start() {
 }
 
 function setupSocket() {
-	APP.socket = io("localhost:2468");
+	const hostname = window.location.hostname
+	APP.socket = io(`${hostname}:8080`);
 	const path = window.location.pathname;
 	const pathSegments = path.split("/").filter((segment) => segment);
 	const type = pathSegments[0];
