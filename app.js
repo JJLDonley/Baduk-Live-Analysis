@@ -18,6 +18,22 @@ const {
 const AI = new KataGo(AIEXE, AICONFIG, AIMODEL);
 const QUEUE = new Queue();
 
+function displayData() {
+	const library = {};
+	for (const key in GAMES) {
+		if (GAMES.hasOwnProperty(key)) {
+			library[key] = typeof GAMES[key];
+		}
+	}
+
+	console.log("Application Status:");
+	console.log("Library: ", library)
+}
+
+// Set an interval to call displayData every 5 minutes
+const interval = 5 * 60 * 1000; // 5 minutes in milliseconds
+setInterval(displayData, interval);
+
 const stringMovesToCoordinates = (moveString) => {
 	const letters = "abcdefghjklmnopqrst";
 
@@ -75,10 +91,7 @@ function formatGameMoveData(submission, moves, currentColor = "b") {
 
 function formatReviewMoveData(submission, moves) {
 	switch (submission) {
-		case "initial": {
-			const formatedMoves = stringMovesToCoordinates(moves);
-			return formatedMoves;
-		}
+		case "initial":
 		case "move": {
 			const formatedMoves = stringMovesToCoordinates(moves);
 			return formatedMoves;
@@ -204,7 +217,21 @@ function setupOGSListeners(type, id) {
 			QUEUE.process(GAMES[id], UUID, QUERIES, MOVES, AI, BES);
 			GAMES[id].queries++;
 
-			let payload = { board: GAMES[id].board.state(MOVES), move: MOVES[MOVES.length - 1] };
+			console.log("Review Last Move, move data", MOVES[MOVES.length - 1])
+			const revertCoordsToNumbers = (move) => {
+				console.log("Reverting coordinates to numbers", move);
+				const lastTwoChars = move.slice(-2); // Extracts the last two characters
+				let [x, y] = lastTwoChars; // Destructures the characters into x and y
+		
+				// Your existing logic for converting x and y to numbers
+				const letters = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s"];
+				x = letters.indexOf(x);
+				y = letters.indexOf(y);
+				console.log("Reverting coordinates to numbers", [x, y]);
+				return [x, y];
+		};
+		
+			let payload = { board: GAMES[id].board.state(MOVES), move: revertCoordsToNumbers(data.m) };
 			BES.emit(`board/${id}`, JSON.stringify(payload));
 		});
 	}
@@ -223,7 +250,6 @@ function connectLiveGame(type, id) {
 			});
 
 			OGS.on("game/" + id + "/gamedata", (data) => {
-
 				if (data.phase === "finished") {
 					OGS.send(["game/disconnect", { game_id: id }]);
 
@@ -259,7 +285,6 @@ function connectLiveGame(type, id) {
 			});
 
 			OGS.on("review/" + id + "/full_state", (data) => {
-
 				if (data[0].gamedata.game_id) {
 					console.log("failed to connect Please use a demo board game or live game");
 					BES.emit("error", {
@@ -303,7 +328,6 @@ APP.get("/:type/:id", (req, res) => {
 	if (!GAMES[id]) {
 		// Assuming connectLiveGame is an async function that adds the game to GAMES
 		connectLiveGame(adjustedType, id);
-
 	}
 
 	// Serve index.html
@@ -311,7 +335,6 @@ APP.get("/:type/:id", (req, res) => {
 });
 
 BES.on("connection", (socket) => {
-
 	socket.on("subscribe", (game_id) => {
 		const id = game_id["id"]; // Extract id directly from game_id
 		const type = game_id["type"]; // Extract id directly from game_id
