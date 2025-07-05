@@ -36,7 +36,7 @@ class KataGo {
         return col + row;
     }
 
-    queryHash(moves, maxVisits = null) {
+    queryHash(moves, maxVisits = 10) {
         let query = {
             id: String(this.totalQueries),
             moves: moves.map(([color, x, y]) => [color, `${x}${y}`]),

@@ -1,16 +1,17 @@
-import { WINRATE_OVER, WINRATE_PIE, WINRATE_TEXT } from "./constants.js";
+import { WINRATE_OVER, WINRATE_PIE, WINRATE_TEXT } from "./domElements.js";
 import { getColorForValue } from "./board.js";
+
 export function updateWinrate(winrate, lastMoveValue, color = '') {
-    let { black, white } = winrate;
+    const { black, white } = winrate;
 
-    // Convert white percentage to grayscale for background
-    WINRATE_OVER.style.backgroundColor = color == '' ? getColorForValue(lastMoveValue) : color;
+    // Convert white percentage to background color based on move value
+    WINRATE_OVER.style.backgroundColor = color === '' ? getColorForValue(lastMoveValue) : color;
 
-    // Invert grayscale value for text color
-    let textColor =  white > black ? `white` : `black`;
+    // Determine text color based on which player has higher winrate
+    const textColor = white > black ? 'white' : 'black';
     WINRATE_TEXT.style.color = textColor;
 
-    // Update winrate text
+    // Update winrate text with the higher percentage
     WINRATE_TEXT.innerHTML = white > black ? `${white}%` : `${black}%`;
 
     // Update pie chart gradient

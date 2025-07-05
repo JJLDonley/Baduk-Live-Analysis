@@ -1,18 +1,41 @@
-export const BLACK_TIME = {}
-export const WHITE_TIME = {}
-export const BLACK_NAME = document.getElementById("black-name");
-export const WHITE_NAME = document.getElementById("white-name");
-export const BLACK_CLOCK = document.getElementById("black-clock");
-export const WHITE_CLOCK = document.getElementById("white-clock");
-export const WINRATE_PIE = document.getElementById("pie");
-export const WINRATE_OVER = document.getElementById("pie-over");
-export const WINRATE_TEXT = document.getElementById("pie-text");
-export const CONFIDENCE_BLACK_TEXT = document.getElementById("black-points");
-export const CONFIDENCE_WHITE_TEXT = document.getElementById("white-points");
-export const CURRENT_MOVE_MARKER_ID = 'current-move-marker';
-export const BLACK_IMAGE = new Image();
-BLACK_IMAGE.src = '../assets/black_stone.png'
-export const WHITE_IMAGE = new Image();
-WHITE_IMAGE.src = '../assets/white_stone.png'
-export const BOARD_IMAGE = new Image();
-BOARD_IMAGE.src = '../assets/kaya.jpg'
+// Legacy constants file - most functionality moved to config.js and domElements.js
+// This file is kept for backward compatibility
+
+import { CONFIG } from './config.js';
+import { 
+    BLACK_IMAGE, 
+    WHITE_IMAGE, 
+    BOARD_IMAGE,
+    BLACK_NAME,
+    WHITE_NAME,
+    BLACK_CLOCK,
+    WHITE_CLOCK,
+    WINRATE_PIE,
+    WINRATE_OVER,
+    WINRATE_TEXT,
+    CONFIDENCE_BLACK_TEXT,
+    CONFIDENCE_WHITE_TEXT
+} from './domElements.js';
+
+// Re-export for backward compatibility
+export const CURRENT_MOVE_MARKER_ID = CONFIG.ELEMENT_IDS.CURRENT_MOVE_MARKER;
+
+// Re-export DOM elements for backward compatibility
+export {
+    BLACK_IMAGE,
+    WHITE_IMAGE,
+    BOARD_IMAGE,
+    BLACK_NAME,
+    WHITE_NAME,
+    BLACK_CLOCK,
+    WHITE_CLOCK,
+    WINRATE_PIE,
+    WINRATE_OVER,
+    WINRATE_TEXT,
+    CONFIDENCE_BLACK_TEXT,
+    CONFIDENCE_WHITE_TEXT
+};
+
+// Legacy exports that are now handled by clock.js
+export const BLACK_TIME = {};
+export const WHITE_TIME = {};

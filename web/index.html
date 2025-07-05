@@ -9,159 +9,8 @@
 			href="https://fonts.googleapis.com/css2?family=Roboto:wght@900&display=swap"
 			rel="stylesheet"
 		/>
+		<link rel="stylesheet" href="css/styles.css" />
 		<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
-		<style>
-			@font-face {
-				font-family: "ClockFont";
-				src: url("./assets/alarm clock.ttf") format("truetype");
-			}
-
-			body {
-				background-color: #00ff00;
-			}
-
-			.information {
-				display: flex;
-				justify-content: space-between;
-				/* This will align children to the edges */
-				align-items: center;
-				width: 524px;
-			}
-
-			.vertical {
-				display: flex;
-				flex-direction: column;
-				justify-content: center;
-				align-items: flex-start;
-				/* Align text to the left for black player */
-				flex: 1;
-			}
-
-			.vertical.right-aligned {
-				align-items: flex-end;
-				/* Align text to the right for white player */
-			}
-
-			.winrate {
-				position: relative;
-				width: 75px;
-				height: 75px;
-			}
-
-			#pie {
-				width: 100%;
-				height: 100%;
-				border-radius: 100%;
-			}
-
-			#pie-over {
-				position: absolute;
-				top: 8%;
-				/* top edge */
-				left: 8%;
-				/* left edge */
-				width: 84%;
-				height: 84%;
-				background-color: grey;
-				border-radius: 50%;
-			}
-
-			#pie-text {
-				position: absolute;
-				top: 50%;
-				left: 50%;
-				transform: translate(-50%, -50%);
-				font-family: "Roboto", sans-serif;
-				font-size: 28px;
-				color: white;
-			}
-
-			.vertical span,
-			.vertical text {
-				margin: 5px 0;
-			}
-
-			.clock {
-				font-size: 32px;
-			}
-
-			#player-name,
-			#white-name,
-			#white-clock {
-				padding-right: 4px;
-				font-family: "Roboto", sans-serif;
-				font-size: 26px;
-				font-weight: 900;
-				text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
-				color: white;
-			}
-
-			#player-name,
-			#black-name,
-			#black-clock {
-				padding-left: 4px;
-				font-family: "Roboto", sans-serif;
-				font-size: 26px;
-				font-weight: 900;
-				text-shadow: -1px -1px 0 #ffffff, 1px -1px 0 #ffffff, -1px 1px 0 #ffffff, 1px 1px 0 #ffffff;
-				color: black;
-			}
-
-			#black-clock,
-			#white-clock {
-        font-family: 'ClockFont', Roboto;
-				font-size: 40px;
-				margin-bottom: -4px;
-			}
-      
-			.goboard {
-				width: 524px;
-				height: 524px;
-				background-image: url(https://ai-sensei.com/img/kaya14d.jpg);
-				margin-top: 8px;
-			}
-
-			.counting {
-				margin-top: 2px;
-				position: relative;
-				/* Establishes a positioning context */
-				width: 519px;
-				height: 38px;
-				border: 3px solid black;
-				border-radius: 5px 5px 5px 5px;
-				overflow: hidden;
-			}
-
-			#black-points,
-			#white-points {
-				position: absolute;
-				top: 50%;
-				transform: translateY(-50%);
-				/* Centers the text vertically */
-			}
-
-			#black-points {
-				left: 10px;
-				font-family: "Roboto", sans-serif;
-				font-size: 32px;
-				font-weight: 900;
-				text-shadow: -2px -2px 0 #ffffff, 2px -2px 0 #ffffff, -2px 2px 0 #ffffff, 2px 2px 0 #ffffff;
-				color: black;
-			}
-
-			#white-points {
-				right: 10px;
-				text-align: right;
-				font-family: "Roboto", sans-serif;
-				font-size: 32px;
-				text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000;
-				color: white;
-			}
-
-			.small-text {
-				font-size: 0.8em; /* 1.5 times larger than the surrounding text */
-			}
-		</style>
 	</head>
 
 	<body>
@@ -169,7 +18,6 @@
 			<div class="vertical">
 				<span id="black-clock" class="clock">00:00</span>
 				<text id="black-name" class="player-name">Black Player</text>
-				<!-- Corrected the class name -->
 			</div>
 			<div class="winrate">
 				<div
@@ -182,7 +30,6 @@
 			<div class="vertical right-aligned">
 				<span id="white-clock" class="clock">00:00</span>
 				<text id="white-name" class="player-name">White Player</text>
-				<!-- Corrected the class name -->
 			</div>
 		</div>
 
@@ -191,14 +38,23 @@
 			<text id="black-points">117</text>
 			<text id="white-points">121</text>
 		</div>
-		<script type="module" src="js/domLoader.js"></script>
+
+		<!-- Load modules in proper order -->
+		<script type="module" src="js/config.js"></script>
+		<script type="module" src="js/domElements.js"></script>
+		<script type="module" src="js/boardRenderer.js"></script>
+		<script type="module" src="js/scoreBarRenderer.js"></script>
+		<script type="module" src="js/domManager.js"></script>
 		<script type="module" src="js/winrate.js"></script>
 		<script type="module" src="js/constants.js"></script>
 		<script type="module" src="js/scorebar.js"></script>
 		<script type="module" src="js/board.js"></script>
 		<script type="module" src="js/clock.js"></script>
+		<script type="module" src="js/clockTest.js"></script>
 		<script type="module" src="js/players.js"></script>
 		<script type="module" src="js/app.js"></script>
+		
+		<!-- Initialize application -->
 		<script type="module">
 			import { APP } from "./js/app.js";
 		
