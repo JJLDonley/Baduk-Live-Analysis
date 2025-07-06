@@ -1,3 +1,5 @@
+const { v4: uuidv4 } = require("uuid");
+
 class GameAnalysis {
     constructor(gameEntity) {
         this.game = gameEntity;
@@ -10,7 +12,7 @@ class GameAnalysis {
                 black: { values: [], points: 0 },
                 white: { values: [], points: 0 }
             },
-            score: 0,
+            score: 1.5,
             winrate: {
                 previous: 49.0,
                 current: 61.0,
@@ -26,14 +28,26 @@ class GameAnalysis {
     }
 
     async processQuery(query, moves) {
-        // Update current player and move info
+        // Use game's actual metadata instead of generating random values
+        const analysisId = uuidv4();
+        const gameType = this.game.type;
+        const gameId = this.game.id;
+        
         this.game.current.player = query["rootInfo"]["currentPlayer"] || 
             (moves.length % 2 === 0 ? 'B' : 'W');
         this.game.current.move = moves.length;
+        
+        // Get the correct move number after updating, ensure it's never undefined
+        const moveNumber = Math.max(0, this.game.current.move);
 
         // Update last move info
-        this.game.last.move = moves[moves.length - 1];
-        this.game.lastMoveToArrayCoordinates();
+        if (moves.length > 0) {
+            this.game.last.move = moves[moves.length - 1];
+            this.game.lastMoveToArrayCoordinates();
+        } else {
+            // Initial position - no moves yet
+            this.game.last.move = [];
+        }
         this.game.last.value = 0.0;
 
         // Process AI analysis
@@ -45,6 +59,16 @@ class GameAnalysis {
 
         // Update game state
         this.game.state = this.game.board.state(this.game.liveMoves);
+        
+        // Return analysis result with correct metadata
+        return {
+            id: analysisId,
+            type: gameType,
+            gameId: gameId,
+            moveNumber: moveNumber,
+            timestamp: Date.now(),
+            data: this.getAnalysisData()
+        };
     }
 
     processScoreAnalysis(query) {
@@ -239,6 +263,14 @@ class GameAnalysis {
                 moves: this.ai.moves,
             },
             lead: this.game.lead,
+            current: {
+                move: this.game.current.move,
+                player: this.game.current.player,
+            },
+            last: {
+                move: this.game.last.move,
+                value: this.game.last.move.length > 0 ? (this.game.last.value * 0.1).toFixed(2) : "0.00",
+            },
         };
     }
 }

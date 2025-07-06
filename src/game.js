@@ -12,8 +12,8 @@ class GameEntity {
         this.uuid = uuidv4();
         this.state = [];
         this.board = new Board();
-        this.handicap = [];
-        this.komi = 7.5;
+        this.handicap = data.handicap || [];
+        this.komi = data.komi || 7.5;
         this.current = {
             player: data.current,
             move: 0,
@@ -23,6 +23,21 @@ class GameEntity {
             value: 0,
         };
         this.lead = "";
+        
+        // Analysis history storage
+        this.analysisHistory = [];
+        this.maxAnalysisHistory = 2;
+        
+        // Store additional game metadata
+        this.gameMetadata = {
+            rules: data.rules || {},
+            timeControl: data.time_control || {},
+            phase: data.phase || "play",
+            width: data.width || 19,
+            height: data.height || 19,
+            komi: data.komi || 7.5,
+            handicap: data.handicap || []
+        };
         
         this.initiatePlayerVariables(data.players);
         this.analysisEngine = new GameAnalysis(this);
@@ -45,7 +60,34 @@ class GameEntity {
 
     async analysis(query, moves) {
         this.moves = moves;
-        await this.analysisEngine.processQuery(query, moves);
+        const analysisResult = await this.analysisEngine.processQuery(query, moves);
+        
+        // Store analysis in history
+        this.addAnalysisToHistory(analysisResult);
+        
+        return analysisResult;
+    }
+
+    addAnalysisToHistory(analysisResult) {
+        // Add to beginning of array
+        this.analysisHistory.unshift(analysisResult);
+        
+        // Keep only the last two analyses
+        if (this.analysisHistory.length > this.maxAnalysisHistory) {
+            this.analysisHistory.pop();
+        }
+    }
+
+    getAnalysisHistory() {
+        return this.analysisHistory;
+    }
+
+    getCurrentAnalysis() {
+        return this.analysisHistory[0] || null;
+    }
+
+    getPreviousAnalysis() {
+        return this.analysisHistory[1] || null;
     }
 
     lastMoveToArrayCoordinates() {
@@ -62,19 +104,14 @@ class GameEntity {
     }
 
     data() {
-        const analysisData = this.analysisEngine.getAnalysisData();
+        const currentAnalysis = this.getCurrentAnalysis();
+        const analysisData = currentAnalysis ? currentAnalysis.data : this.analysisEngine.getAnalysisData();
         
         return {
             ...analysisData,
-            current: {
-                move: this.current.move,
-                player: this.current.player,
-            },
             id: this.id,
-            last: {
-                move: this.last.move,
-                value: (this.last.value * 0.1).toFixed(2),
-            },
+            name: this.name,
+            type: this.type,
             moves: this.moves,
             players: {
                 black: {
@@ -90,6 +127,24 @@ class GameEntity {
             },
             state: this.state,
             uuid: this.uuid,
+            // Game metadata
+            gameMetadata: {
+                rules: this.gameMetadata.rules,
+                timeControl: this.gameMetadata.timeControl,
+                phase: this.gameMetadata.phase,
+                width: this.gameMetadata.width,
+                height: this.gameMetadata.height,
+                komi: this.gameMetadata.komi,
+                handicap: this.gameMetadata.handicap
+            },
+            // Analysis metadata
+            analysis: currentAnalysis ? {
+                id: currentAnalysis.id,
+                type: currentAnalysis.type,
+                gameId: currentAnalysis.gameId,
+                moveNumber: currentAnalysis.moveNumber,
+                timestamp: currentAnalysis.timestamp
+            } : null
         };
     }
 }
@@ -198,7 +253,7 @@ class Board {
 
     state(moves) {
         this.grid = Array.from({ length: 19 }, () => Array(19).fill(""));
-        if (moves.length > 0) {
+        if (moves && moves.length > 0) {
             moves.forEach((move) => this.playMove(move));
         }
         return this.grid;

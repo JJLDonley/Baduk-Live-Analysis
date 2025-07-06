@@ -5,6 +5,7 @@ import { updateWinrate } from "./winrate.js";
 import { updatePlayerInfomation } from "./players.js";
 import { WINRATE_OVER } from "./domElements.js";
 import { domManager } from "./domManager.js";
+import { AnalysisManager } from "./analysisManager.js";
 
 export const APP = {};
 
@@ -17,6 +18,9 @@ APP.current = { black: 50, white: 50 };
 APP.lastMoveValue = 0;
 APP.socket = null;
 APP.isConnected = false;
+APP.analysisManager = new AnalysisManager();
+APP.gameInfo = null;
+APP.reviewData = null;
 
 // Event names
 APP.events = {
@@ -67,11 +71,16 @@ APP.setupSocket = function() {
     const type = pathSegments[0];
     const id = pathSegments[1];
 
-    // Set event names
-    APP.events.event = `${type}/${id}`;
+    // Convert demo to review to match backend logic
+    const adjustedType = type === "demo" ? "review" : type;
+
+    // Set event names using adjusted type
+    APP.events.event = `${adjustedType}/${id}`;
     APP.events.clock = `clock/${id}`;
     APP.events.board = `board/${id}`;
-    APP.events.finished = `${type}/${id}/finished`;
+    APP.events.gameinfo = `gameinfo/${id}`;
+    APP.events.reviewdata = `reviewdata/${id}`;
+    APP.events.finished = `${adjustedType}/${id}/finished`;
 
     // Connection events
     APP.socket.on("connect", () => {
@@ -95,11 +104,35 @@ APP.setupSocket = function() {
 
 // Setup event listeners for game events
 APP.setupEventListeners = function() {
-    // Handle AI evaluations
+    // Handle AI evaluations with AnalysisManager
     APP.socket.on(APP.events.event, (data) => {
         try {
-            const parsedData = JSON.parse(data).data;
-            APP.handleAIEvaluation(parsedData);
+            const parsedPayload = JSON.parse(data);
+            
+            // Check if this is initial game data without analysis metadata (during initial connection)
+            if (!parsedPayload.analysisId && parsedPayload.data) {
+                APP.handleAIEvaluation(parsedPayload.data);
+                return;
+            }
+            
+            // Validate the parsed payload for regular analysis
+            if (!parsedPayload.analysisId || parsedPayload.moveNumber === undefined) {
+                console.error("Invalid analysis payload received:", parsedPayload);
+                return;
+            }
+            
+            // Create analysis data structure for AnalysisManager
+            const analysisData = {
+                analysisId: parsedPayload.analysisId,
+                gameType: parsedPayload.gameType,
+                gameId: parsedPayload.gameId,
+                moveNumber: parsedPayload.moveNumber,
+                timestamp: parsedPayload.timestamp,
+                data: parsedPayload.data
+            };
+            
+            // Use AnalysisManager to handle the analysis
+            APP.analysisManager.addAnalysis(analysisData);
         } catch (error) {
             console.error("Error parsing AI evaluation data:", error);
         }
@@ -132,6 +165,28 @@ APP.setupEventListeners = function() {
         console.log("Game finished:", data);
         APP.handleGameFinished(data);
     });
+
+    // Handle initial game info
+    APP.socket.on(APP.events.gameinfo, (data) => {
+        try {
+            const parsedData = JSON.parse(data);
+            console.log("Received game info:", parsedData);
+            APP.handleGameInfo(parsedData.data);
+        } catch (error) {
+            console.error("Error parsing game info data:", error);
+        }
+    });
+
+    // Handle review data
+    APP.socket.on(APP.events.reviewdata, (data) => {
+        try {
+            const parsedData = JSON.parse(data);
+            console.log("Received review data:", parsedData);
+            APP.handleReviewData(parsedData.data);
+        } catch (error) {
+            console.error("Error parsing review data:", error);
+        }
+    });
 };
 
 // Setup debugging capabilities
@@ -150,11 +205,24 @@ APP.setupDebugging = function() {
             events: APP.events,
             current: APP.current,
             previous: APP.previous,
-            lastMoveValue: APP.lastMoveValue
+            lastMoveValue: APP.lastMoveValue,
+            gameInfo: APP.gameInfo,
+            reviewData: APP.reviewData
         });
     };
     
-    console.log("Debug functions available: debugClock(), debugApp()");
+    window.debugAnalysis = function() {
+        const state = APP.analysisManager.getState();
+        console.log("Analysis Manager Debug Info:", state);
+        return state;
+    };
+    
+    window.resetAnalysis = function() {
+        APP.analysisManager.reset();
+        console.log("Analysis manager reset");
+    };
+    
+    console.log("Debug functions available: debugClock(), debugApp(), debugAnalysis(), resetAnalysis()");
 };
 
 // Handle AI evaluation data
@@ -216,6 +284,56 @@ APP.handleGameFinished = function(data) {
     // For example: show final result, disable interactions, etc.
 };
 
+// Handle initial game info
+APP.handleGameInfo = function(gameInfo) {
+    console.log("Processing initial game info:", gameInfo);
+    
+    // Update player information immediately
+    if (gameInfo.players) {
+        updatePlayerInfomation(
+            gameInfo.players.black.username, 
+            gameInfo.players.white.username
+        );
+        
+        // Store player info in app state
+        APP.gameInfo = gameInfo;
+        
+        console.log(`Game: ${gameInfo.game_name}`);
+        console.log(`Black: ${gameInfo.players.black.username} (${gameInfo.players.black.rank})`);
+        console.log(`White: ${gameInfo.players.white.username} (${gameInfo.players.white.rank})`);
+        
+        if (gameInfo.komi) {
+            console.log(`Komi: ${gameInfo.komi}`);
+        }
+        
+        if (gameInfo.handicap && gameInfo.handicap.length > 0) {
+            console.log(`Handicap: ${gameInfo.handicap.length} stones`);
+        }
+    }
+    
+    // Handle time control info
+    if (gameInfo.time_control) {
+        console.log("Time control:", gameInfo.time_control);
+    }
+    
+    // Handle rules
+    if (gameInfo.rules) {
+        console.log("Rules:", gameInfo.rules);
+    }
+};
+
+// Handle review data
+APP.handleReviewData = function(reviewData) {
+    console.log("Processing review data:", reviewData);
+    
+    // Store review data in app state
+    APP.reviewData = reviewData;
+    
+    console.log(`Review ID: ${reviewData.review_id}`);
+    console.log(`Total moves: ${reviewData.total_moves}`);
+    console.log(`Moves string: ${reviewData.moves_string}`);
+};
+
 // Update winrate tracking
 APP.setPreviousAndCurrent = function(current, winrate) {
     APP.previous = { ...APP.current };
@@ -246,6 +364,9 @@ APP.reset = function() {
     APP.previous = {};
     APP.current = { black: 50, white: 50 };
     APP.lastMoveValue = 0;
+    APP.gameInfo = null;
+    APP.reviewData = null;
     stopClock();
     domManager.reset();
+    APP.analysisManager.reset();
 };

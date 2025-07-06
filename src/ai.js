@@ -37,9 +37,22 @@ class KataGo {
     }
 
     queryHash(moves, maxVisits = 10) {
+        // Handle empty moves array (empty board position)
+        const formattedMoves = moves ? moves.map(([color, x, y]) => {
+            // Handle pass moves
+            if (x === "pass" || y === "pass") {
+                return [color, "pass"];
+            }
+            
+            // Ensure proper move format for KataGo
+            // x should be a letter, y should be a number
+            const moveStr = `${x}${y}`;
+            return [color, moveStr];
+        }) : [];
+
         let query = {
             id: String(this.totalQueries),
-            moves: moves.map(([color, x, y]) => [color, `${x}${y}`]),
+            moves: formattedMoves,
             rules: "chinese",
             komi: 7.5,
             boardXSize: 19,

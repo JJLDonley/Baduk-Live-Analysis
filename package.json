@@ -4,9 +4,9 @@
 	"description": "",
 	"main": "test.js",
 	"scripts": {
-		"start": "node app.js",
+		"start": "node app.js -dir katago/ -exe katago.exe -m weights.bin.gz -c default.cfg",
 		"setup": "setup_katago.bat",
-		"start/linux": "IS_LINUX=true node app.js"
+		"start/linux": "IS_LINUX=true node app.js -dir katago/ -exe katago -m weights.bin.gz -c default.cfg"
 	},
 	"author": "Jeremiah Donley",
 	"license": "ISC",

@@ -77,4 +77,26 @@ export const getMoveValueColor = (value) => {
         }
     }
     return COLORS[COLORS.length - 1];
-}; 
+};
+
+// Get move quality description based on value
+export const getMoveQualityDescription = (value) => {
+    const absValue = Math.abs(value);
+    
+    if (absValue < 1) return "Excellent";
+    if (absValue < 3) return "Very Good";
+    if (absValue < 6) return "Good";
+    if (absValue < 12) return "Questionable";
+    if (absValue < 24) return "Bad";
+    return "Terrible";
+};
+
+// Move quality definitions for the vertical color diagram
+export const MOVE_QUALITY_LEVELS = [
+    { name: "Excellent", color: "green", threshold: 1, description: "< 1pt loss" },
+    { name: "Very Good", color: "yellowgreen", threshold: 3, description: "1-3pt loss" },
+    { name: "Good", color: "rgb(255,206,0)", threshold: 6, description: "3-6pt loss" },
+    { name: "Questionable", color: "orange", threshold: 12, description: "6-12pt loss" },
+    { name: "Bad", color: "red", threshold: 24, description: "12-24pt loss" },
+    { name: "Terrible", color: "purple", threshold: Infinity, description: "≥24pt loss" }
+]; 

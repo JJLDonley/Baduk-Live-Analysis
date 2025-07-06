@@ -63,6 +63,53 @@ body {
     color: white;
 }
 
+/* Move Quality Indicator */
+.move-quality-indicator {
+    position: absolute;
+    top: 0;
+    right: -16px; /* 4px gap + 12px width */
+    width: 12px;
+    height: 75px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    padding: 2px 0;
+    box-sizing: border-box;
+}
+
+.quality-circle {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 1px solid rgba(0, 0, 0, 0.3);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.quality-circle.excellent {
+    background-color: green;
+}
+
+.quality-circle.very-good {
+    background-color: yellowgreen;
+}
+
+.quality-circle.good {
+    background-color: rgb(255, 206, 0);
+}
+
+.quality-circle.questionable {
+    background-color: orange;
+}
+
+.quality-circle.bad {
+    background-color: red;
+}
+
+.quality-circle.terrible {
+    background-color: purple;
+}
+
 /* Player Information */
 .vertical span,
 .vertical text {

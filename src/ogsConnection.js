@@ -52,22 +52,44 @@ class OGSConnection {
                     const game = GAMES[id];
                     const gameEmitID = `${game.type}/${game.id}`;
                     game.state = game.board.state(game.moves);
-                    game.last.move = game.moves[game.moves.length - 1];
-                    game.lastMoveToArrayCoordinates();
                     
-                    const payload = {
-                        type: gameEmitID,
-                        data: game.data(),
-                    };
+                    if (game.moves.length > 0) {
+                        game.last.move = game.moves[game.moves.length - 1];
+                        game.lastMoveToArrayCoordinates();
+                    }
                     
-                    BES.emit(gameEmitID, JSON.stringify(payload));
+                    // Get the current analysis if available
+                    const currentAnalysis = game.getCurrentAnalysis();
                     
-                    const payload2 = { 
+                    if (currentAnalysis) {
+                        // Send existing analysis data with proper metadata
+                        const payload = {
+                            type: gameEmitID,
+                            data: game.data(),
+                            analysisId: currentAnalysis.id,
+                            gameType: currentAnalysis.type,
+                            gameId: currentAnalysis.gameId,
+                            moveNumber: currentAnalysis.moveNumber,
+                            timestamp: currentAnalysis.timestamp
+                        };
+                        
+                        BES.emit(gameEmitID, JSON.stringify(payload));
+                    } else {
+                        // No analysis yet, trigger initial analysis
+                        const UUID = game.uuid;
+                        const QUERIES = game.queries;
+                        const MOVES = game.moves;
+                        this.queue.process(game, UUID, QUERIES, MOVES, this.ai, BES);
+                        game.queries++;
+                    }
+                    
+                    // Send board state
+                    const boardPayload = { 
                         board: game.state, 
-                        move: [game.last.move[1], game.last.move[2]] 
+                        move: game.moves.length > 0 ? [game.last.move[1], game.last.move[2]] : [] 
                     };
                     
-                    BES.emit(`board/${id}`, JSON.stringify(payload2));
+                    BES.emit(`board/${id}`, JSON.stringify(boardPayload));
                 } else {
                     this.connectLiveGame(type, id);
                 }
@@ -118,17 +140,22 @@ class OGSConnection {
                 return;
             }
 
+            // Always trigger analysis for initial position
             const UUID = GAMES[id].uuid;
             const QUERIES = GAMES[id].queries;
             this.queue.process(GAMES[id], UUID, QUERIES, MOVES, this.ai, BES);
             GAMES[id].queries++;
             this.setupGameListeners(id);
             
-            const payload = {
+            // Send initial game metadata immediately
+            this.sendInitialGameMetadata(id, data);
+            
+            // Send initial board state
+            const boardPayload = {
                 board: GAMES[id].board.state(MOVES),
-                move: data.moves[data.moves.length - 1],
+                move: data.moves && data.moves.length > 0 ? data.moves[data.moves.length - 1] : [],
             };
-            BES.emit(`board/${id}`, JSON.stringify(payload));
+            BES.emit(`board/${id}`, JSON.stringify(boardPayload));
         });
     }
 
@@ -148,21 +175,24 @@ class OGSConnection {
             }
 
             const MOVES = this.formatGameStateData("review", data);
-            if (MOVES == undefined) {
-                return;
-            }
-
+            // Note: MOVES can be an empty array for demo boards with no moves
+            
+            // Always trigger analysis for initial position (even if empty)
             const UUID = GAMES[id].uuid;
             const QUERIES = GAMES[id].queries;
             this.queue.process(GAMES[id], UUID, QUERIES, MOVES, this.ai, BES);
             GAMES[id].queries++;
             this.setupReviewListeners(id);
 
-            const payload = { 
+            // Send initial game metadata for review immediately
+            this.sendInitialReviewMetadata(id, data);
+
+            // Send initial board state (handle empty moves)
+            const boardPayload = { 
                 board: GAMES[id].board.state(MOVES), 
-                move: MOVES[MOVES.length - 1] 
+                move: MOVES.length > 0 ? MOVES[MOVES.length - 1] : []
             };
-            BES.emit(`board/${id}`, JSON.stringify(payload));
+            BES.emit(`board/${id}`, JSON.stringify(boardPayload));
         });
     }
 
@@ -218,29 +248,38 @@ class OGSConnection {
                 return;
             }
             
-            const MOVES = this.formatReviewMoveData("move", data.m);
+            // Handle review move updates - convert string to moves array
+            let MOVES = [];
+            if (data.m && data.m !== "") {
+                MOVES = this.formatReviewMoveData("move", data.m);
+                // Update the game's live moves to match the review position
+                GAMES[id].liveMoves = MOVES;
+                GAMES[id].moves = MOVES;
+            } else {
+                // Empty position
+                MOVES = [];
+                GAMES[id].liveMoves = [];
+                GAMES[id].moves = [];
+            }
+            
             const UUID = GAMES[id].uuid;
             const QUERIES = GAMES[id].queries;
             this.queue.process(GAMES[id], UUID, QUERIES, MOVES, this.ai, BES);
             GAMES[id].queries++;
 
-            console.log("Review Last Move, move data", MOVES[MOVES.length - 1]);
-            
             const revertCoordsToNumbers = (move) => {
-                console.log("Reverting coordinates to numbers", move);
                 const lastTwoChars = move.slice(-2);
                 let [x, y] = lastTwoChars;
 
                 const letters = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s"];
                 x = letters.indexOf(x);
                 y = letters.indexOf(y);
-                console.log("Reverting coordinates to numbers", [x, y]);
                 return [x, y];
             };
 
             const payload = { 
                 board: GAMES[id].board.state(MOVES), 
-                move: revertCoordsToNumbers(data.m) 
+                move: (data.m && data.m !== "") ? revertCoordsToNumbers(data.m) : []
             };
             BES.emit(`board/${id}`, JSON.stringify(payload));
         });
@@ -256,6 +295,11 @@ class OGSConnection {
             return [];
         }
 
+        // Handle empty string case (0 moves)
+        if (moveString === "" || moveString.trim() === "") {
+            return [];
+        }
+
         const coordinates = "abcdefghijklmnopqrs";
         const pairs = moveString.match(/.{1,2}/g);
 
@@ -268,10 +312,15 @@ class OGSConnection {
                 if (pair[0] === "." && pair[1] === ".") {
                     return null;
                 }
-                const x_num = coordinates.indexOf(pair[0]);
-                const y = 19 - coordinates.indexOf(pair[1]);
-                const x = letters[x_num];
+                
+                const x_coord = coordinates.indexOf(pair[0]);
+                const y_coord = coordinates.indexOf(pair[1]);
+                
+                // Convert to proper letter-number format for KataGo
+                const x = letters[x_coord];
+                const y = 19 - y_coord;
                 const player = i % 2 === 0 ? "b" : "w";
+                
                 return [player, x, y];
             })
             .filter((move) => move !== null);
@@ -286,8 +335,8 @@ class OGSConnection {
                 const formatedMoves = [];
                 moves.forEach((move, index) => {
                     const color = index % 2 === 0 ? "b" : "w";
-                    const x = moves[0] == -1 ? "pass" : letters[move[0]];
-                    const y = moves[1] == -1 ? "pass" : 19 - move[1];
+                    const x = move[0] == -1 ? "pass" : letters[move[0]];
+                    const y = move[1] == -1 ? "pass" : 19 - move[1];
                     formatedMoves.push([color, x, y]);
                 });
                 return formatedMoves;
@@ -307,6 +356,11 @@ class OGSConnection {
         switch (submission) {
             case "initial":
             case "move": {
+                // Handle empty string moves (no moves on board)
+                if (moves === "" || moves === null || moves === undefined) {
+                    return [];
+                }
+                
                 const formatedMoves = this.stringMovesToCoordinates(moves);
                 return formatedMoves;
             }
@@ -341,6 +395,14 @@ class OGSConnection {
                         },
                     },
                     current: formatedMoves.length % 2 == 0 ? "b" : "w",
+                    // Include additional game metadata
+                    rules: data.rules || {},
+                    time_control: data.time_control || {},
+                    phase: data.phase || "play",
+                    width: data.width || 19,
+                    height: data.height || 19,
+                    komi: data.komi || 7.5,
+                    handicap: data.handicap || []
                 };
 
                 GAMES[id] = new GameEntity(gamedata);
@@ -350,13 +412,21 @@ class OGSConnection {
             case "review": {
                 const filteredData = data.filter((entry) => !entry.chat);
                 const id = filteredData[0].id;
-                const name = filteredData[0].gamedata.game_name;
+                const gameData = filteredData[0].gamedata;
+                const name = gameData.game_name;
                 const moves = filteredData[filteredData.length - 1].m;
-                const BP = filteredData[0].gamedata.players.black.name;
-                const BR = parseInt(filteredData[0].gamedata.players.black.rank);
-                const WP = filteredData[0].gamedata.players.white.name;
-                const WR = parseInt(filteredData[0].gamedata.players.white.rank);
-                const formatedMoves = this.formatReviewMoveData("initial", moves);
+                const BP = gameData.players.black.name;
+                const BR = parseInt(gameData.players.black.rank);
+                const WP = gameData.players.white.name;
+                const WR = parseInt(gameData.players.white.rank);
+                
+                // Handle empty moves (demo board with no moves)
+                let formatedMoves = [];
+                if (moves && moves !== "") {
+                    formatedMoves = this.formatReviewMoveData("initial", moves);
+                } else {
+                    formatedMoves = [];
+                }
 
                 const gamedata = {
                     id: id,
@@ -374,12 +444,110 @@ class OGSConnection {
                         },
                     },
                     current: formatedMoves.length % 2 == 0 ? "b" : "w",
+                    // Include additional game metadata
+                    rules: gameData.rules || {},
+                    time_control: gameData.time_control || {},
+                    phase: "review",
+                    width: gameData.width || 19,
+                    height: gameData.height || 19,
+                    komi: gameData.komi || 7.5,
+                    handicap: gameData.handicap || []
                 };
 
                 GAMES[id] = new GameEntity(gamedata);
                 return formatedMoves;
             }
         }
+    }
+
+    sendInitialGameMetadata(id, data) {
+        // Send initial clock data if available
+        if (data.clock) {
+            const clockEmitID = `clock/${id}`;
+            const payload = {
+                type: clockEmitID,
+                data: data.clock,
+            };
+            BES.emit(clockEmitID, JSON.stringify(payload));
+        }
+
+        // Send initial game info
+        const gameInfoEmitID = `gameinfo/${id}`;
+        const gameInfoPayload = {
+            type: gameInfoEmitID,
+            data: {
+                game_id: data.game_id,
+                game_name: data.game_name,
+                players: {
+                    black: {
+                        username: data.players.black.username,
+                        rank: data.players.black.rank,
+                        id: data.players.black.id
+                    },
+                    white: {
+                        username: data.players.white.username,
+                        rank: data.players.white.rank,
+                        id: data.players.white.id
+                    }
+                },
+                rules: data.rules || {},
+                time_control: data.time_control || {},
+                phase: data.phase,
+                width: data.width,
+                height: data.height,
+                komi: data.komi,
+                handicap: data.handicap
+            }
+        };
+        BES.emit(gameInfoEmitID, JSON.stringify(gameInfoPayload));
+    }
+
+    sendInitialReviewMetadata(id, data) {
+        const filteredData = data.filter((entry) => !entry.chat);
+        const gameData = filteredData[0].gamedata;
+        
+        // Send initial game info for review
+        const gameInfoEmitID = `gameinfo/${id}`;
+        const gameInfoPayload = {
+            type: gameInfoEmitID,
+            data: {
+                game_id: id,
+                game_name: gameData.game_name,
+                players: {
+                    black: {
+                        username: gameData.players.black.name,
+                        rank: gameData.players.black.rank,
+                        id: gameData.players.black.id
+                    },
+                    white: {
+                        username: gameData.players.white.name,
+                        rank: gameData.players.white.rank,
+                        id: gameData.players.white.id
+                    }
+                },
+                rules: gameData.rules || {},
+                time_control: gameData.time_control || {},
+                phase: "review",
+                width: gameData.width,
+                height: gameData.height,
+                komi: gameData.komi,
+                handicap: gameData.handicap
+            }
+        };
+        BES.emit(gameInfoEmitID, JSON.stringify(gameInfoPayload));
+
+        // Send review-specific data
+        const reviewDataEmitID = `reviewdata/${id}`;
+        const reviewDataPayload = {
+            type: reviewDataEmitID,
+            data: {
+                review_id: id,
+                moves_string: filteredData[filteredData.length - 1].m || "",
+                total_moves: filteredData.length - 1,
+                review_data: filteredData
+            }
+        };
+        BES.emit(reviewDataEmitID, JSON.stringify(reviewDataPayload));
     }
 }
 

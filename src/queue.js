@@ -22,14 +22,18 @@ class Queue {
 
 		try {
 			const query = await ai.query(uuid, queries, moves);
-			console.log(`Query processed for Game::${game.id}`);
-			
-			await game.analysis(query, moves);
+			const analysisResult = await game.analysis(query, moves);
 
 			const gameEmitID = `${game.type}/${game.id}`;
 			const payload = {
 				type: gameEmitID,
 				data: game.data(),
+				// Include analysis metadata at the top level
+				analysisId: analysisResult.id,
+				gameType: analysisResult.type,
+				gameId: analysisResult.gameId,
+				moveNumber: analysisResult.moveNumber,
+				timestamp: analysisResult.timestamp
 			};
 			
 			BES.emit(gameEmitID, JSON.stringify(payload));

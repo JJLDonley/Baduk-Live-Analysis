@@ -1,8 +1,7 @@
 /flood_fill_logs.json
 /gtp_logs
 /node_modules
-katago/default_gtp.cfg
-katago/KataGoData/
+katago/*
 analysis_logs/
 test.html
 OGS.js
