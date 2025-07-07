@@ -11,8 +11,12 @@ export function updateWinrate(winrate, lastMoveValue, color = '') {
     const textColor = white > black ? 'white' : 'black';
     WINRATE_TEXT.style.color = textColor;
 
-    // Update winrate text with the higher percentage
-    WINRATE_TEXT.innerHTML = white > black ? `${white}%` : `${black}%`;
+    // Update winrate text with the higher percentage AND player color
+    if (white > black) {
+        WINRATE_TEXT.innerHTML = `W ${white}%`;
+    } else {
+        WINRATE_TEXT.innerHTML = `B ${black}%`;
+    }
 
     // Update pie chart gradient
     WINRATE_PIE.style.backgroundImage = `conic-gradient(white 0%, white ${white}%, black ${white}%, black 100%)`;

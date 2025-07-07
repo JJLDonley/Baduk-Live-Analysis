@@ -37,14 +37,14 @@ class GameAnalysis {
         const gameType = this.game.type;
         const gameId = this.game.id;
         
-        // Check if rootInfo exists
-        if (!query["rootInfo"]) {
-            console.error(`[Analysis] ERROR: rootInfo is undefined in query`);
+        // Check if required fields exist
+        if (!query["winrate"]) {
+            console.error(`[Analysis] ERROR: winrate is undefined in query`);
             console.error(`[Analysis] Available query fields:`, Object.keys(query));
-            throw new Error("rootInfo is undefined in KataGo response");
+            throw new Error("winrate is undefined in KataGo response");
         }
         
-        this.game.current.player = query["rootInfo"]["currentPlayer"] || 
+        this.game.current.player = query["currentPlayer"] || 
             (moves.length % 2 === 0 ? 'B' : 'W');
         this.game.current.move = moves.length;
         
@@ -88,7 +88,7 @@ class GameAnalysis {
     }
 
     processScoreAnalysis(query) {
-        this.ai.score = query["rootInfo"]["scoreLead"];
+        this.ai.score = query["scoreLead"] || 0;
         this.game.lead = this.determineLead();
     }
 
