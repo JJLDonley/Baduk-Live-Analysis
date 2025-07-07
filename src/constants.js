@@ -10,7 +10,21 @@ const PARAMS = { transports: ["websocket"] };
 
 const APP = express();
 const HTTP_SERVER = http.createServer(APP);
-const BES = new Server(HTTP_SERVER);
+
+// Configure Socket.IO with security options
+const BES = new Server(HTTP_SERVER, {
+    cors: {
+        origin: true, // Allow all origins for now, can be restricted later
+        methods: ["GET", "POST"],
+        credentials: true
+    },
+    // Additional security options
+    allowEIO3: false, // Disable Engine.IO v3 compatibility
+    transports: ["websocket", "polling"],
+    pingTimeout: 60000,
+    pingInterval: 25000
+});
+
 const OGS = io(URL, PARAMS);
 const GAMES = {};
 

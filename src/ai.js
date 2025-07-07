@@ -58,7 +58,6 @@ class KataGo {
             boardXSize: 19,
             boardYSize: 19,
             includePolicy: true,
-            kata_analysis: true,
             includeOwnership: true,
         };
 
