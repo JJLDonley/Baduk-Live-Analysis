@@ -28,10 +28,21 @@ class GameAnalysis {
     }
 
     async processQuery(query, moves) {
+        console.log(`[Analysis] Processing query for Game::${this.game.id}`);
+        console.log(`[Analysis] Query keys:`, Object.keys(query));
+        console.log(`[Analysis] Moves count:`, moves.length);
+        
         // Use game's actual metadata instead of generating random values
         const analysisId = uuidv4();
         const gameType = this.game.type;
         const gameId = this.game.id;
+        
+        // Check if rootInfo exists
+        if (!query["rootInfo"]) {
+            console.error(`[Analysis] ERROR: rootInfo is undefined in query`);
+            console.error(`[Analysis] Available query fields:`, Object.keys(query));
+            throw new Error("rootInfo is undefined in KataGo response");
+        }
         
         this.game.current.player = query["rootInfo"]["currentPlayer"] || 
             (moves.length % 2 === 0 ? 'B' : 'W');
@@ -61,7 +72,7 @@ class GameAnalysis {
         this.game.state = this.game.board.state(this.game.liveMoves);
         
         // Return analysis result with correct metadata
-        return {
+        const result = {
             id: analysisId,
             type: gameType,
             gameId: gameId,
@@ -69,6 +80,11 @@ class GameAnalysis {
             timestamp: Date.now(),
             data: this.getAnalysisData()
         };
+        
+        console.log(`[Analysis] Completed analysis for Game::${gameId}, move ${moveNumber}`);
+        console.log(`[Analysis] Result keys:`, Object.keys(result));
+        
+        return result;
     }
 
     processScoreAnalysis(query) {

@@ -74,6 +74,9 @@ class KataGo {
         const gameQueryID = uuid + ": " + queries;
         const query = this.queryHash(moves);
 
+        console.log(`[AI] Sending query for ${gameQueryID}`);
+        console.log(`[AI] Query data:`, JSON.stringify(query, null, 2));
+
         return new Promise((resolve, reject) => {
             this.pendingQueries.push({ resolve, reject });
             this.engine.stdin.write(JSON.stringify(query) + "\n");
@@ -83,12 +86,13 @@ class KataGo {
     handleLine(line) {
         try {
             const response = JSON.parse(line);
+            console.log(`[AI] Received response:`, JSON.stringify(response, null, 2));
             if (this.pendingQueries.length > 0) {
                 const { resolve } = this.pendingQueries.shift();
                 resolve(response);
             }
         } catch (error) {
-            console.error("Error parsing JSON: ", error);
+            console.error("[AI] Error parsing JSON: ", error);
             if (this.pendingQueries.length > 0) {
                 const { reject } = this.pendingQueries.shift();
                 reject(error);

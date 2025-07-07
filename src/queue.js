@@ -14,15 +14,20 @@ class Queue {
 	async processNext() {
 		if (this.queue.length === 0) {
 			this.processing = false;
+			console.log(`[Queue] Queue empty, processing stopped`);
 			return;
 		}
 
 		this.processing = true;
 		const { game, uuid, queries, moves, ai, BES } = this.latestUniqueMove();
+		console.log(`[Queue] Processing game ${game.id}, moves: ${moves.length}`);
 
 		try {
 			const query = await ai.query(uuid, queries, moves);
+			console.log(`[Queue] Got AI query response for Game::${game.id}`);
+			
 			const analysisResult = await game.analysis(query, moves);
+			console.log(`[Queue] Got analysis result for Game::${game.id}`);
 
 			const gameEmitID = `${game.type}/${game.id}`;
 			const payload = {
@@ -36,9 +41,11 @@ class Queue {
 				timestamp: analysisResult.timestamp
 			};
 			
+			console.log(`[Queue] Emitting to frontend: ${gameEmitID}`);
+			console.log(`[Queue] Payload keys:`, Object.keys(payload));
 			BES.emit(gameEmitID, JSON.stringify(payload));
 		} catch (error) {
-			console.error(`Error processing query for Game::${game.id}:`, error);
+			console.error(`[Queue] Error processing query for Game::${game.id}:`, error);
 		}
 
 		await this.processNext();
