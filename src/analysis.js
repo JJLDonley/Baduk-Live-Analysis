@@ -78,7 +78,7 @@ class GameAnalysis {
 
     processWinrateAnalysis(query) {
         this.ai.winrate.previous = this.ai.winrate.current;
-        this.ai.winrate.current = Math.round(query["rootInfo"]["winrate"] * 100);
+        this.ai.winrate.current = Math.round(query["winrate"] * 100);
         this.game.last.value = this.calculateLastMoveValue();
         this.determineIndividualPercentages();
     }

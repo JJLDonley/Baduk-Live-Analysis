@@ -75,6 +75,14 @@ class Server {
             res.sendFile(path.join(__dirname, "../web", "index.html"));
         });
 
+        // Serve static files from web directory first (before catch-all routes)
+        APP.use(express.static(path.join(__dirname, "../web"), {
+            // Security options for static file serving
+            dotfiles: 'deny', // Deny access to dotfiles
+            index: false, // Don't serve directory indexes
+            maxAge: '1d' // Cache static files for 1 day
+        }));
+
         // Main route for game/demo/review with strict validation
         APP.get("/:type/:id", (req, res) => {
             const { type, id } = req.params;
@@ -102,14 +110,6 @@ class Server {
             // Serve index.html
             res.sendFile(path.join(__dirname, "../web", "index.html"));
         });
-
-        // Serve static files from web directory only
-        APP.use(express.static(path.join(__dirname, "../web"), {
-            // Security options for static file serving
-            dotfiles: 'deny', // Deny access to dotfiles
-            index: false, // Don't serve directory indexes
-            maxAge: '1d' // Cache static files for 1 day
-        }));
 
         // Catch-all route for security - deny everything else
         APP.use("*", (req, res) => {
