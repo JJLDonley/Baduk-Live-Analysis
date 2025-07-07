@@ -47,9 +47,12 @@ class OGSConnection {
             socket.on("subscribe", (game_id) => {
                 const id = game_id["id"];
                 const type = game_id["type"];
+                console.log(`[OGS] Frontend subscribing to ${type} ${id}`);
 
                 if (GAMES[id]) {
                     const game = GAMES[id];
+                    console.log(`[OGS] Game ${id} found, type: ${game.type}, moves: ${game.moves.length}`);
+                    
                     const gameEmitID = `${game.type}/${game.id}`;
                     game.state = game.board.state(game.moves);
                     
@@ -62,6 +65,7 @@ class OGSConnection {
                     const currentAnalysis = game.getCurrentAnalysis();
                     
                     if (currentAnalysis) {
+                        console.log(`[OGS] Sending existing analysis for game ${id}`);
                         // Send existing analysis data with proper metadata
                         const payload = {
                             type: gameEmitID,
@@ -75,6 +79,7 @@ class OGSConnection {
                         
                         BES.emit(gameEmitID, JSON.stringify(payload));
                     } else {
+                        console.log(`[OGS] No analysis found, triggering new analysis for game ${id}`);
                         // No analysis yet, trigger initial analysis
                         const UUID = game.uuid;
                         const QUERIES = game.queries;
@@ -91,6 +96,7 @@ class OGSConnection {
                     
                     BES.emit(`board/${id}`, JSON.stringify(boardPayload));
                 } else {
+                    console.log(`[OGS] Game ${id} not found, connecting to ${type} ${id}`);
                     this.connectLiveGame(type, id);
                 }
             });
@@ -100,18 +106,22 @@ class OGSConnection {
     }
 
     connectLiveGame(type, id) {
+        console.log(`[OGS] Connecting to ${type} ${id}`);
         if (!GAMES[id]) {
             GAMES[id] = {};
         }
 
         switch (type) {
             case "game":
+                console.log(`[OGS] Calling connectGame for ${id}`);
                 this.connectGame(id);
                 break;
             case "review":
+                console.log(`[OGS] Calling connectReview for ${id}`);
                 this.connectReview(id);
                 break;
             default:
+                console.log(`[OGS] Invalid type: ${type}`);
                 return;
         }
     }
@@ -123,7 +133,12 @@ class OGSConnection {
         });
 
         OGS.on("game/" + id + "/gamedata", (data) => {
+            console.log(`[OGS] Received gamedata for game ${id}`);
+            console.log(`[OGS] Game phase: ${data.phase}`);
+            console.log(`[OGS] Game moves count: ${data.moves ? data.moves.length : 0}`);
+            
             if (data.phase === "finished") {
+                console.log(`[OGS] Game ${id} is finished, disconnecting`);
                 OGS.send(["game/disconnect", { game_id: id }]);
 
                 const MOVES = this.formatGameStateData("game", data);
@@ -137,9 +152,13 @@ class OGSConnection {
 
             const MOVES = this.formatGameStateData("game", data);
             if (MOVES == undefined) {
+                console.log(`[OGS] No moves available for game ${id}`);
                 return;
             }
 
+            console.log(`[OGS] Formatted moves count: ${MOVES.length}`);
+            console.log(`[OGS] Triggering analysis for game ${id}`);
+            
             // Always trigger analysis for initial position
             const UUID = GAMES[id].uuid;
             const QUERIES = GAMES[id].queries;
