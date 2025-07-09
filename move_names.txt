@@ -1,0 +1,73 @@
+Move 1: q4 (Black) - 3-4 Point
+Move 2: d16 (White) - 4-4 Point
+Move 3: d3 (Black) - 3-4 Point
+Move 4: p16 (White) - 4-4 Point
+Move 5: d5 (Black) - High Enclosure
+Move 6: d6 (White) - Attachment
+Move 7: e6 (Black) - Hane
+Move 8: c5 (White) - Hane
+Move 9: e5 (Black) - Connect
+Move 10: c4 (White) - Stretch
+Move 11: d7 (Black) - Atari
+Move 12: d4 (White) - Turn
+Move 13: e4 (Black) - Turn
+Move 14: c3 (White) - Turn
+Move 15: e2 (Black) - Tiger’s Mouth
+Move 16: c6 (White) - Connect
+Move 17: c2 (Black) - Tiger’s Mouth
+Move 18: c7 (White) - Turn
+Move 19: n3 (Black) - Low Enclosure
+Move 20: d8 (White) - Atari
+Move 21: e7 (Black) - Connect
+Move 22: q13 (White) - Low Enclosure
+Move 23: c17 (Black) - 3-3 Point Invasion
+Move 24: d17 (White) - Stretch
+Move 25: c16 (Black) - Stretch
+Move 26: c14 (White) - Small Knight
+Move 27: c15 (Black) - Stretch
+Move 28: d15 (White) - Stretch
+Move 29: b14 (Black) - Hane
+Move 30: c18 (White) - Hane
+Move 31: b18 (Black) - Hane
+Move 32: b13 (White) - Hane
+Move 33: d14 (Black) - Atari
+Move 34: c13 (White) - Connect
+Move 35: d18 (Black) - Atari
+Move 36: e18 (White) - Atari
+Move 37: c19 (Black) - Take
+Move 38: f16 (White) - One-Point Jump
+Move 39: f9 (Black) - Small Knight
+Move 40: d9 (White) - Stretch
+Move 41: p8 (Black) - No pattern found
+Move 42: j4 (White) - Hoshi
+Move 43: l4 (Black) - Small Knight
+Move 44: f3 (White) - No pattern found
+Move 45: e3 (Black) - Connect
+Move 46: i6 (White) - Small Knight
+Move 47: h3 (Black) - No pattern found
+Move 48: g7 (White) - Small Knight
+Move 49: i8 (Black) - Large Knight
+Move 50: h4 (White) - Dog’s Head
+Move 51: i3 (Black) - Stretch
+Move 52: g9 (White) - Attachment
+Move 53: g10 (Black) - Hane
+Move 54: h9 (White) - Stretch
+Move 55: f8 (Black) - Stretch
+Move 56: i7 (White) - Table Shape
+Move 57: d10 (Black) - Attachment
+Move 58: f10 (White) - Cut
+Move 59: e10 (Black) - Atari
+Move 60: f11 (White) - Stretch
+Move 61: c10 (Black) - Stretch
+Move 62: b9 (White) - One-Point Jump
+Move 63: b10 (Black) - Stretch
+Move 64: c9 (White) - Connect
+Move 65: d13 (Black) - Stretch
+Move 66: d12 (White) - Hane
+Move 67: e12 (Black) - Hane
+Move 68: e13 (White) - Atari
+Move 69: e14 (Black) - Atari
+Move 70: e11 (White) - Atari
+Move 71: f13 (Black) - Take
+Move 72: d11 (White) - Connect
+Move 73: c12 (Black) - Cut

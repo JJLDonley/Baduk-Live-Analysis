@@ -1,0 +1,20 @@
+{
+  "port": 8081,
+  "host": "0.0.0.0",
+  "katago": {
+    "directory": "./server/katago",
+    "executable": "katago.exe",
+    "model": "weights.bin.gz",
+    "config": "default.cfg"
+  },
+  "analysis": {
+    "maxVisits": 10,
+    "maxConcurrentAnalyses": 1,
+    "timeoutMs": 30000,
+    "includePolicy": false,
+    "includeOwnership": true
+  },
+  "logging": {
+    "level": "info"
+  }
+}

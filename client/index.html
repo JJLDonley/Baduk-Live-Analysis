@@ -1,0 +1,1703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <base href="/">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Baduk Live Analysis</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <style>
+        @font-face {
+            font-family: "ClockFont";
+            src: url("/assets/alarm_clock.ttf") format("truetype");
+        }
+
+        /* Base Styles */
+        body {
+            background: grey;
+            margin: 0;
+            padding: 20px;
+            font-family: 'Roboto', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Information Section */
+        .information {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 506px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px;
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .vertical {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: flex-start;
+            flex: 1;
+        }
+
+        .vertical.right-aligned {
+            align-items: flex-end;
+        }
+
+        /* Winrate Pie Chart */
+        .winrate {
+            position: relative;
+            width: 75px;
+            height: 75px;
+        }
+
+        #pie {
+            width: 100%;
+            height: 100%;
+            border-radius: 100%;
+            background-image: conic-gradient(rgb(233, 233, 233) 50%, black 50%);
+            transition: background-image 0.3s ease;
+        }
+
+        #pie-over {
+            position: absolute;
+            top: 8%;
+            left: 8%;
+            width: 84%;
+            height: 84%;
+            background-color: #2a5298;
+            border-radius: 50%;
+        }
+
+        #pie-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: "Roboto", sans-serif;
+            font-size: 24px;
+            font-weight: 700;
+            color: white;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+        }
+
+        /* Turn Indicator */
+        .turn-indicator-left {
+            position: absolute;
+            top: 50%;
+            left: -25px;
+            transform: translateY(-50%);
+        }
+
+        .turn-indicator-right {
+            position: absolute;
+            top: 50%;
+            right: -45px;
+            transform: translateY(-50%);
+        }
+
+        .turn-stone {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            transition: opacity 0.3s ease;
+            display: none;
+        }
+
+        .turn-stone.active {
+            opacity: 1;
+            display: inline-block;
+        }
+
+        .turn-stone.inactive {
+            opacity: 0.3;
+            display: none;
+        }
+
+        /* Move Quality Indicator */
+        .move-quality-indicator {
+            position: absolute;
+            top: 0;
+            right: -20px;
+            width: 12px;
+            height: 75px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            padding: 2px 0;
+            box-sizing: border-box;
+        }
+
+        .quality-circle {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+        }
+
+        .quality-circle.excellent { background-color: #4CAF50; }
+        .quality-circle.very-good { background-color: #8BC34A; }
+        .quality-circle.good { background-color: #FFEB3B; }
+        .quality-circle.questionable { background-color: #FF9800; }
+        .quality-circle.bad { background-color: #F44336; }
+        .quality-circle.terrible { background-color: #9C27B0; }
+
+        /* Player Information */
+        .clock {
+            font-family: 'ClockFont', 'Roboto', monospace;
+            font-size: 36px;
+            font-weight: 700;
+            margin: 2px 0;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .player-name {
+            font-size: 18px;
+            font-weight: 700;
+            margin: 2px 0;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+        }
+
+        #black-name, #black-clock {
+            color: white;
+            text-shadow: 0 0 3px rgba(0,0,0,0.8);
+        }
+
+        #white-name, #white-clock {
+            color: white;
+            text-shadow: 0 0 3px rgba(0,0,0,0.8);
+        }
+
+        /* Go Board */
+        .goboard {
+            width: 524px;
+            height: 524px;
+            background: linear-gradient(135deg, #DEB887 0%, #D2B48C 25%, #DEB887 50%, #D2B48C 75%, #DEB887 100%);
+            border: 2px solid #000000;
+            border-radius: 8px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* SVG Board Styles */
+        .board {
+            width: 100%;
+            height: 100%;
+        }
+
+        .board .lines line {
+            stroke: #654321;
+            stroke-width: 1;
+        }
+
+        .board .label text {
+            font-family: 'Roboto', sans-serif;
+            font-size: 12px;
+            font-weight: 700;
+            fill: #654321;
+            text-anchor: middle;
+        }
+
+        .board circle {
+            fill: #654321;
+        }
+
+        .board image {
+            cursor: pointer;
+        }
+
+        .board image:hover {
+            opacity: 0.8;
+        }
+
+        /* Current move marker */
+        .current-move-marker {
+            /* Solid good move quality color - no blinking */
+        }
+
+        /* Game Over Overlay */
+        .game-over-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            border-radius: 8px;
+            backdrop-filter: blur(4px);
+        }
+
+        .game-over-text {
+            font-family: 'Roboto', sans-serif;
+            font-size: 72px;
+            font-weight: 900;
+            color: white;
+            text-shadow: 0 4px 12px rgba(0, 0, 0, 0.8);
+            letter-spacing: 4px;
+            animation: gameOverPulse 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes gameOverPulse {
+            from {
+                transform: scale(1);
+                opacity: 0.9;
+            }
+            to {
+                transform: scale(1.05);
+                opacity: 1;
+            }
+        }
+
+        /* Score Bar */
+        .counting {
+            position: relative;
+            width: 524px;
+            height: 40px;
+            border: 2px solid #666;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+        }
+
+        .counting svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+                        /* Confidence bucket animations */
+                .counting svg rect {
+                    transition: width 0.4s ease-out, x 0.4s ease-out;
+                }
+
+                /* Enhanced animation for significant changes */
+                .counting svg rect.animating {
+                    transition: width 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), x 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+                }
+
+        /* Rounded corners for end buckets - only outer edges */
+        .counting svg rect.black-leftmost {
+            /* Left side rounded for leftmost black bucket (high confidence, far left) */
+            border-radius: 6px 0 0 6px;
+        }
+        
+        .counting svg rect.black-rightmost {
+            /* Right side rounded for rightmost black bucket (low confidence, toward center) */
+            border-radius: 0 6px 6px 0;
+        }
+        
+        .counting svg rect.white-leftmost {
+            /* Left side rounded for leftmost white bucket (low confidence, toward center) */
+            border-radius: 6px 0 0 6px;
+        }
+        
+        .counting svg rect.white-rightmost {
+            /* Right side rounded for rightmost white bucket (high confidence, far right) */
+            border-radius: 0 6px 6px 0;
+        }
+
+        #black-points, #white-points {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 20px;
+            font-weight: 700;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+            z-index: 10;
+        }
+
+        #black-points {
+            left: 12px;
+            color: white;
+        }
+
+        #white-points {
+            right: 12px;
+            color: black;
+        }
+
+        /* Game Status */
+        .game-status {
+            text-align: center;
+            color: white;
+            font-size: 14px;
+            margin-top: 10px;
+            opacity: 0.8;
+        }
+
+        /* Shape Name - Default styling with white text and black outline */
+        .shape-name {
+            text-align: center;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            margin: 8px 0;
+            text-shadow: 
+                -1px -1px 0 #000,
+                1px -1px 0 #000,
+                -1px 1px 0 #000,
+                1px 1px 0 #000,
+                2px 2px 4px rgba(0,0,0,0.5);
+            transition: color 0.3s ease;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 600px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .information, .goboard, .counting {
+                width: 90vw;
+                max-width: 400px;
+            }
+            
+            .goboard {
+                height: 90vw;
+                max-height: 400px;
+            }
+            
+            .clock {
+                font-size: 24px;
+            }
+            
+            .player-name {
+                font-size: 14px;
+            }
+        }
+
+        /* Loading Animation */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Player Information -->
+        <div class="information">
+            <div class="vertical">
+                <span id="black-clock" class="clock">00:00</span>
+                <span id="black-name" class="player-name">Black Player</span>
+            </div>
+            <div class="winrate">
+                <div id="pie"></div>
+                <div id="pie-over"></div>
+                <span id="pie-text">50%</span>
+                <!-- Turn Indicator Stones -->
+                <div class="turn-indicator-left">
+                    <img id="black-turn-stone" class="turn-stone black" src="/assets/black_stone.png" alt="Black's turn">
+                </div>
+                <div class="turn-indicator-right">
+                    <img id="white-turn-stone" class="turn-stone white" src="/assets/white_stone.png" alt="White's turn">
+                </div>
+                <!-- Move Quality Indicator -->
+                <div class="move-quality-indicator">
+                    <div class="quality-circle excellent" title="Excellent moves (< 1pt loss)"></div>
+                    <div class="quality-circle very-good" title="Very good moves (1-3pt loss)"></div>
+                    <div class="quality-circle good" title="Good moves (3-6pt loss)"></div>
+                    <div class="quality-circle questionable" title="Questionable moves (6-12pt loss)"></div>
+                    <div class="quality-circle bad" title="Bad moves (12-24pt loss)"></div>
+                    <div class="quality-circle terrible" title="Terrible moves (≥24pt loss)"></div>
+                </div>
+            </div>
+            <div class="vertical right-aligned">
+                <span id="white-clock" class="clock">00:00</span>
+                <span id="white-name" class="player-name">White Player</span>
+            </div>
+        </div>
+
+        <!-- Go Board -->
+        <div class="goboard">
+            <!-- SVG board will be inserted here by JavaScript -->
+            <!-- Game Over Overlay -->
+            <div id="game-over-overlay" class="game-over-overlay" style="display: none;">
+                <div class="game-over-text" id="game-over-text">B+</div>
+            </div>
+        </div>
+
+        <!-- Shape Name - Positioned between board and score bar -->
+        <div class="shape-name" id="shape-name">
+            Shape name
+        </div>
+
+        <!-- Score Bar -->
+        <div class="counting" id="counting">
+            <span id="black-points">0</span>
+            <span id="white-points">0</span>
+        </div>
+
+        <!-- Game Status -->
+        <div class="game-status" id="game-status" style="display: none;">
+            Connecting to OGS...
+        </div>
+    </div>
+
+    <!-- Load the OGS-WS implementation -->
+    <script src="ogs-ws.js"></script>
+    
+    <!-- UI Manager -->
+    <script>
+        // Configuration - matching web folder's config
+        const CONFIG = {
+            BOARD: {
+                SIZE: 19,
+                OFFSET: 50,
+                GRID_SIZE: 600,
+                VIEW_BOX_SIZE: 700,
+                get CELL_SIZE() { return this.GRID_SIZE / (this.SIZE - 1); }
+            },
+            STAR_POINTS: [
+                { x: 3, y: 3 }, { x: 9, y: 3 }, { x: 15, y: 3 },
+                { x: 3, y: 9 }, { x: 9, y: 9 }, { x: 15, y: 9 },
+                { x: 3, y: 15 }, { x: 9, y: 15 }, { x: 15, y: 15 }
+            ],
+            IMAGES: {
+                BLACK_STONE: '/assets/black_stone.png',
+                WHITE_STONE: '/assets/white_stone.png'
+            },
+            SVG_NS: "http://www.w3.org/2000/svg",
+            ELEMENT_IDS: {
+                CURRENT_MOVE_MARKER: 'current-move-marker',
+                STONES_GROUP: 'stonesGroup',
+                BOARD: 'board'
+            }
+        };
+
+        // Stone ID generator
+        const getStoneId = (x, y) => `stone-${x}-${y}`;
+
+        // Confidence chart configuration
+        const SCORE_BAR_CONFIG = {
+            WIDTH: 520,
+            HEIGHT: 36,
+            TOTAL_BOXES: 11,
+            MAX_SCORE: 100
+        };
+
+        // Confidence point ID generator
+        const getConfidencePointId = (color, index) => `${color}-confidence-${index}`;
+
+        // Score Bar Renderer for confidence chart
+        class ScoreBarRenderer {
+            constructor() {
+                this.svgNS = CONFIG.SVG_NS;
+                this.config = SCORE_BAR_CONFIG;
+            }
+
+            createScoreBar() {
+                const svg = this.createSVGElement();
+                this.addBackdrops(svg);
+                this.addConfidenceBoxes(svg);
+                this.addCenterLine(svg);
+                this.mountScoreBar(svg);
+                return svg;
+            }
+
+            createSVGElement() {
+                const svg = document.createElementNS(this.svgNS, "svg");
+                svg.setAttributeNS(null, "width", "100%");
+                svg.setAttributeNS(null, "height", "100%");
+                svg.setAttributeNS(null, "viewBox", `0 0 ${this.config.WIDTH} ${this.config.HEIGHT}`);
+                return svg;
+            }
+
+            addBackdrops(svg) {
+                // Black backdrop
+                const blackGroup = document.createElementNS(this.svgNS, "g");
+                svg.appendChild(blackGroup);
+
+                const blackBackdrop = this.createBackdrop(
+                    "black-points-back",
+                    "rgb(60, 60, 60)"
+                );
+                blackGroup.appendChild(blackBackdrop);
+
+                // White backdrop
+                const whiteGroup = document.createElementNS(this.svgNS, "g");
+                svg.appendChild(whiteGroup);
+
+                const whiteBackdrop = this.createBackdrop(
+                    "white-points-back",
+                    "rgb(175, 175, 175)"
+                );
+                whiteGroup.appendChild(whiteBackdrop);
+            }
+
+            createBackdrop(id, fillColor) {
+                const backdrop = document.createElementNS(this.svgNS, "rect");
+                backdrop.setAttributeNS(null, "x", 0);
+                backdrop.setAttributeNS(null, "y", 0);
+                backdrop.setAttributeNS(null, "width", 0);
+                backdrop.setAttributeNS(null, "height", this.config.HEIGHT);
+                backdrop.setAttributeNS(null, "fill", fillColor);
+                backdrop.setAttributeNS(null, "id", id);
+                return backdrop;
+            }
+
+
+
+            addConfidenceBoxes(svg) {
+                this.addBlackConfidenceBoxes(svg);
+                this.addWhiteConfidenceBoxes(svg);
+            }
+
+            addBlackConfidenceBoxes(svg) {
+                const blackGroup = svg.querySelector('g'); // First group is black group
+                
+                // Create individual rectangles for each bucket
+                for (let i = this.config.TOTAL_BOXES; i >= 1; i--) {
+                    const rect = document.createElementNS(this.svgNS, "rect");
+                    rect.setAttributeNS(null, "x", 0);
+                    rect.setAttributeNS(null, "y", 0);
+                    rect.setAttributeNS(null, "width", 0);
+                    rect.setAttributeNS(null, "height", this.config.HEIGHT);
+                    rect.setAttributeNS(null, "id", getConfidencePointId('black', i));
+                    rect.setAttributeNS(null, "fill", this.calculateBlackBoxColor(i));
+                    
+                    // Add CSS classes for specific corner rounding
+                    if (i === this.config.TOTAL_BOXES) {
+                        // Leftmost bucket (highest confidence) - round left side only
+                        rect.classList.add('black-leftmost');
+                    } else if (i === 1) {
+                        // Rightmost bucket (lowest confidence) - round right side only
+                        rect.classList.add('black-rightmost');
+                    }
+                    
+                    blackGroup.appendChild(rect);
+                }
+            }
+
+            addWhiteConfidenceBoxes(svg) {
+                const whiteGroup = svg.querySelectorAll('g')[1]; // Second group is white group
+                
+                // Create individual rectangles for each bucket
+                for (let i = this.config.TOTAL_BOXES; i >= 1; i--) {
+                    const rect = document.createElementNS(this.svgNS, "rect");
+                    rect.setAttributeNS(null, "x", 0);
+                    rect.setAttributeNS(null, "y", 0);
+                    rect.setAttributeNS(null, "width", 0);
+                    rect.setAttributeNS(null, "height", this.config.HEIGHT);
+                    rect.setAttributeNS(null, "id", getConfidencePointId('white', i));
+                    rect.setAttributeNS(null, "fill", this.calculateWhiteBoxColor(i));
+                    
+                    // Add CSS classes for specific corner rounding
+                    if (i === this.config.TOTAL_BOXES) {
+                        // Rightmost bucket (highest confidence) - round right side only
+                        rect.classList.add('white-rightmost');
+                    } else if (i === 1) {
+                        // Leftmost bucket (lowest confidence) - round left side only
+                        rect.classList.add('white-leftmost');
+                    }
+                    
+                    whiteGroup.appendChild(rect);
+                }
+            }
+
+            calculateBlackBoxColor(i) {
+                // Black chart: Black to dark grey
+                // Highest confidence (bucket 11) = darkest black, lowest confidence (bucket 1) = lightest grey
+                const confidenceLevel = i; // i goes from 11 down to 1
+                const colorValue = 240 - (confidenceLevel * 20); // 240 (light grey) down to 20 (dark black)
+                const hex = Math.min(Math.max(colorValue, 20), 240).toString(16).padStart(2, '0');
+                return `#${hex}${hex}${hex}`;
+            }
+
+            calculateWhiteBoxColor(i) {
+                // White chart: White to light grey  
+                // Highest confidence (bucket 11) = purest white, lowest confidence (bucket 1) = darker grey
+                const confidenceLevel = i; // i goes from 11 down to 1  
+                const colorValue = 160 + (confidenceLevel * 8); // 160 (darker grey) up to 248 (near white)
+                const hex = Math.min(Math.max(colorValue, 160), 255).toString(16).padStart(2, '0');
+                return `#${hex}${hex}${hex}`;
+            }
+
+            addCenterLine(svg) {
+                const centerLine = document.createElementNS(this.svgNS, "line");
+                centerLine.setAttributeNS(null, "x1", this.config.WIDTH / 2);
+                centerLine.setAttributeNS(null, "y1", 0);
+                centerLine.setAttributeNS(null, "x2", this.config.WIDTH / 2);
+                centerLine.setAttributeNS(null, "y2", this.config.HEIGHT);
+                centerLine.setAttributeNS(null, "stroke", "black");
+                centerLine.setAttributeNS(null, "stroke-width", "2px");
+                centerLine.setAttributeNS(null, "stroke-dasharray", "3");
+                svg.appendChild(centerLine);
+            }
+
+            mountScoreBar(svg) {
+                const countingContainer = document.getElementById('counting');
+                if (countingContainer) {
+                    // Clear existing SVG if any
+                    const existingSvg = countingContainer.querySelector('svg');
+                    if (existingSvg) {
+                        existingSvg.remove();
+                    }
+                    countingContainer.appendChild(svg);
+                } else {
+                    console.error('Score bar container not found');
+                }
+            }
+
+            // Update score bar with new confidence values
+            updateScoreBar(blackScores, whiteScores) {
+                const blackBack = document.getElementById("black-points-back");
+                const whiteBack = document.getElementById("white-points-back");
+                
+                if (!blackBack || !whiteBack) {
+                    console.error('Score bar backdrop elements not found');
+                    return;
+                }
+
+                // Store previous values for animation comparison
+                const previousBlackScores = this.previousBlackScores || Array(this.config.TOTAL_BOXES).fill(0);
+                const previousWhiteScores = this.previousWhiteScores || Array(this.config.TOTAL_BOXES).fill(0);
+                
+                this.previousBlackScores = [...blackScores];
+                this.previousWhiteScores = [...whiteScores];
+
+                // Scale buckets to 361 total intersections (19x19 board)
+                const TOTAL_INTERSECTIONS = 361;
+
+                let blackTotal = 0;
+                let whiteTotal = 0;
+
+                // Update black scores - highest confidence (bucket 10) on far left, lowest (bucket 0) closest to center
+                // Reverse order: 10, 9, 8, ..., 1, 0 left to right
+                for (let i = this.config.TOTAL_BOXES - 1; i >= 0; i--) {
+                    const rect = document.getElementById(getConfidencePointId('black', i + 1));
+                    if (rect) {
+                        const score = blackScores[i] || 0;
+                        const previousScore = previousBlackScores[i] || 0;
+                        const widthPercent = score / TOTAL_INTERSECTIONS;
+                        const width = widthPercent * this.config.WIDTH;
+                        
+                        // Only show width if there's actual data
+                        if (score > 0) {
+                            rect.setAttribute('width', width);
+                            rect.setAttribute('height', this.config.HEIGHT);
+                            rect.setAttribute('x', blackTotal);
+                            rect.style.display = 'block';
+                            
+                            // Add animation class for significant changes (higher threshold)
+                            if (Math.abs(score - previousScore) > 3) {
+                                rect.classList.add('animating');
+                                setTimeout(() => rect.classList.remove('animating'), 400);
+                            }
+                            
+                            blackTotal += width;
+                        } else {
+                            rect.setAttribute('width', 0);
+                            rect.style.display = 'none';
+                        }
+                    }
+                }
+
+                // Update white scores - highest confidence (bucket 10) on far right, lowest (bucket 0) closest to center
+                // Reverse order: 10, 9, 8, ..., 1, 0 right to left
+                for (let i = this.config.TOTAL_BOXES - 1; i >= 0; i--) {
+                    const rect = document.getElementById(getConfidencePointId('white', i + 1));
+                    if (rect) {
+                        const score = whiteScores[i] || 0;
+                        const previousScore = previousWhiteScores[i] || 0;
+                        const widthPercent = score / TOTAL_INTERSECTIONS;
+                        const width = widthPercent * this.config.WIDTH;
+                        
+                        // Only show width if there's actual data
+                        if (score > 0) {
+                            const xPosition = this.config.WIDTH - whiteTotal - width;
+                            rect.setAttribute('width', width);
+                            rect.setAttribute('height', this.config.HEIGHT);
+                            rect.setAttribute('x', xPosition);
+                            rect.style.display = 'block';
+                            
+                            // Add animation class for significant changes (higher threshold)
+                            if (Math.abs(score - previousScore) > 3) {
+                                rect.classList.add('animating');
+                                setTimeout(() => rect.classList.remove('animating'), 400);
+                            }
+                            
+                            whiteTotal += width;
+                        } else {
+                            rect.setAttribute('width', 0);
+                            rect.style.display = 'none';
+                        }
+                    }
+                }
+
+                // Update backdrops with smooth transitions
+                blackBack.setAttribute('width', blackTotal);
+                whiteBack.setAttribute('width', whiteTotal);
+                whiteBack.setAttribute('x', this.config.WIDTH - whiteTotal);
+
+                // Update score text
+                this.updateScoreText(blackScores, whiteScores);
+            }
+
+            updateScoreText(blackScores, whiteScores) {
+                const blackTotal = blackScores.reduce((acc, val) => acc + val, 0);
+                const whiteTotal = whiteScores.reduce((acc, val) => acc + val, 0);
+
+                const blackText = document.getElementById('black-points');
+                const whiteText = document.getElementById('white-points');
+                
+                // Get previous totals for animation
+                const previousBlackTotal = this.previousBlackTotal || 0;
+                const previousWhiteTotal = this.previousWhiteTotal || 0;
+                
+                // Store current totals for next animation
+                this.previousBlackTotal = blackTotal;
+                this.previousWhiteTotal = whiteTotal;
+
+                // Animate the numbers if there's a significant change
+                if (Math.abs(blackTotal - previousBlackTotal) > 0.5) {
+                    this.animateScoreText(blackText, previousBlackTotal, blackTotal);
+                } else if (blackText) {
+                    blackText.textContent = blackTotal.toFixed(1);
+                }
+                
+                if (Math.abs(whiteTotal - previousWhiteTotal) > 0.5) {
+                    this.animateScoreText(whiteText, previousWhiteTotal, whiteTotal);
+                } else if (whiteText) {
+                    whiteText.textContent = whiteTotal.toFixed(1);
+                }
+            }
+
+            animateScoreText(element, fromValue, toValue) {
+                if (!element) return;
+                
+                // Animation duration in milliseconds
+                const duration = 500;
+                const startTime = performance.now();
+                
+                const animate = (currentTime) => {
+                    const elapsed = currentTime - startTime;
+                    const progress = Math.min(elapsed / duration, 1);
+                    
+                    // Easing function for smooth animation
+                    const easeOutQuart = 1 - Math.pow(1 - progress, 4);
+                    
+                    // Calculate current value
+                    const currentValue = fromValue + (toValue - fromValue) * easeOutQuart;
+                    
+                    // Update text with animated value
+                    element.textContent = currentValue.toFixed(1);
+                    
+                    // Continue animation if not complete
+                    if (progress < 1) {
+                        requestAnimationFrame(animate);
+                    }
+                };
+                
+                requestAnimationFrame(animate);
+            }
+        }
+
+        // Board Renderer - matching web folder's implementation
+        class BoardRenderer {
+            constructor() {
+                this.svgNS = CONFIG.SVG_NS;
+                this.boardConfig = CONFIG.BOARD;
+                this.starPoints = CONFIG.STAR_POINTS;
+                this.blackStoneImage = new Image();
+                this.whiteStoneImage = new Image();
+                this.loadImages();
+            }
+
+            loadImages() {
+                this.blackStoneImage.src = CONFIG.IMAGES.BLACK_STONE;
+                this.whiteStoneImage.src = CONFIG.IMAGES.WHITE_STONE;
+            }
+
+            createBoard() {
+                const svg = this.createSVGElement();
+                this.addBackground(svg);
+                this.addGrid(svg);
+                this.addStarPoints(svg);
+                this.addLabels(svg);
+                this.addStonePositions(svg);
+                this.mountBoard(svg);
+                return svg;
+            }
+
+            createSVGElement() {
+                const svg = document.createElementNS(this.svgNS, "svg");
+                svg.setAttributeNS(null, "viewBox", `0 0 ${this.boardConfig.VIEW_BOX_SIZE} ${this.boardConfig.VIEW_BOX_SIZE}`);
+                svg.setAttributeNS(null, "class", "board");
+                svg.setAttributeNS(null, "id", CONFIG.ELEMENT_IDS.BOARD);
+                svg.style.width = "100%";
+                svg.style.height = "100%";
+                return svg;
+            }
+
+            addBackground(svg) {
+                const background = document.createElementNS(this.svgNS, "rect");
+                background.setAttributeNS(null, "x", this.boardConfig.OFFSET);
+                background.setAttributeNS(null, "y", this.boardConfig.OFFSET);
+                background.setAttributeNS(null, "width", this.boardConfig.GRID_SIZE);
+                background.setAttributeNS(null, "height", this.boardConfig.GRID_SIZE);
+                background.setAttributeNS(null, "fill", "rgba(0, 0, 0, 0.05)");
+                svg.appendChild(background);
+            }
+
+            addGrid(svg) {
+                const linesGroup = document.createElementNS(this.svgNS, "g");
+                linesGroup.setAttributeNS(null, "class", "lines");
+                svg.appendChild(linesGroup);
+
+                for (let i = 0; i < this.boardConfig.SIZE; i++) {
+                    const pos = this.boardConfig.OFFSET + i * this.boardConfig.CELL_SIZE;
+
+                    // Horizontal line
+                    const hLine = this.createLine(
+                        this.boardConfig.OFFSET, pos,
+                        this.boardConfig.OFFSET + this.boardConfig.GRID_SIZE, pos
+                    );
+                    linesGroup.appendChild(hLine);
+
+                    // Vertical line
+                    const vLine = this.createLine(
+                        pos, this.boardConfig.OFFSET,
+                        pos, this.boardConfig.OFFSET + this.boardConfig.GRID_SIZE
+                    );
+                    linesGroup.appendChild(vLine);
+                }
+            }
+
+            createLine(x1, y1, x2, y2) {
+                const line = document.createElementNS(this.svgNS, "line");
+                line.setAttributeNS(null, "x1", x1);
+                line.setAttributeNS(null, "y1", y1);
+                line.setAttributeNS(null, "x2", x2);
+                line.setAttributeNS(null, "y2", y2);
+                return line;
+            }
+
+            addStarPoints(svg) {
+                this.starPoints.forEach(point => {
+                    const circle = document.createElementNS(this.svgNS, "circle");
+                    circle.setAttributeNS(null, "cx", this.boardConfig.OFFSET + point.x * this.boardConfig.CELL_SIZE);
+                    circle.setAttributeNS(null, "cy", this.boardConfig.OFFSET + point.y * this.boardConfig.CELL_SIZE);
+                    circle.setAttributeNS(null, "r", 5);
+                    svg.appendChild(circle);
+                });
+            }
+
+            addLabels(svg) {
+                const labelGroup = document.createElementNS(this.svgNS, "g");
+                labelGroup.setAttributeNS(null, "class", "label");
+                svg.appendChild(labelGroup);
+
+                for (let i = 0; i < this.boardConfig.SIZE; i++) {
+                    const pos = this.boardConfig.OFFSET + i * this.boardConfig.CELL_SIZE;
+                    const number = this.boardConfig.SIZE - i;
+                    const letter = String.fromCharCode("A".charCodeAt(0) + (i >= 8 ? i + 1 : i));
+
+                    // Add labels
+                    this.addLabelText(labelGroup, pos, this.boardConfig.OFFSET / 2, letter);
+                    this.addLabelText(labelGroup, pos, this.boardConfig.VIEW_BOX_SIZE - this.boardConfig.OFFSET / 2, letter);
+                    this.addLabelText(labelGroup, this.boardConfig.OFFSET / 2, pos, number);
+                    this.addLabelText(labelGroup, this.boardConfig.VIEW_BOX_SIZE - this.boardConfig.OFFSET / 2, pos, number);
+                }
+            }
+
+            addLabelText(parent, x, y, content) {
+                const text = document.createElementNS(this.svgNS, "text");
+                text.setAttributeNS(null, "x", x);
+                text.setAttributeNS(null, "y", y);
+                text.setAttributeNS(null, "font-size", "21");
+                text.setAttributeNS(null, "text-anchor", "middle");
+                text.setAttributeNS(null, "dy", "0.35em");
+                text.textContent = content;
+                parent.appendChild(text);
+            }
+
+            addStonePositions(svg) {
+                const stonesGroup = document.createElementNS(this.svgNS, "g");
+                stonesGroup.setAttributeNS(null, "id", CONFIG.ELEMENT_IDS.STONES_GROUP);
+                svg.appendChild(stonesGroup);
+
+                for (let i = 0; i < this.boardConfig.SIZE; i++) {
+                    for (let j = 0; j < this.boardConfig.SIZE; j++) {
+                        const posX = this.boardConfig.OFFSET + i * this.boardConfig.CELL_SIZE;
+                        const posY = this.boardConfig.OFFSET + j * this.boardConfig.CELL_SIZE;
+                        const stonePlaceholder = this.createStoneElement(posX, posY, i, j);
+                        stonesGroup.appendChild(stonePlaceholder);
+                    }
+                }
+            }
+
+            createStoneElement(posX, posY, i, j) {
+                const stone = document.createElementNS(this.svgNS, "image");
+                const size = this.boardConfig.CELL_SIZE * 0.99;
+                
+                stone.setAttributeNS(null, "x", posX - size / 2);
+                stone.setAttributeNS(null, "y", posY - size / 2);
+                stone.setAttributeNS(null, "width", size);
+                stone.setAttributeNS(null, "height", size);
+                stone.setAttributeNS("http://www.w3.org/1999/xlink", "href", "");
+                stone.setAttributeNS(null, "id", getStoneId(i, j));
+                return stone;
+            }
+
+            mountBoard(svg) {
+                const boardContainer = document.querySelector('.goboard');
+                if (boardContainer) {
+                    boardContainer.innerHTML = "";
+                    boardContainer.appendChild(svg);
+                }
+            }
+
+            getStoneElement(x, y) {
+                return document.getElementById(getStoneId(x, y));
+            }
+
+            clearAllStones() {
+                let stonesCleared = 0;
+                for (let i = 0; i < this.boardConfig.SIZE; i++) {
+                    for (let j = 0; j < this.boardConfig.SIZE; j++) {
+                        const stone = this.getStoneElement(i, j);
+                        if (stone) {
+                            const currentHref = stone.getAttributeNS("http://www.w3.org/1999/xlink", "href");
+                            if (currentHref && currentHref !== "") {
+                                stonesCleared++;
+                            }
+                            stone.setAttributeNS("http://www.w3.org/1999/xlink", "href", "");
+                        }
+                    }
+                }
+                console.log(`[BoardRenderer] Cleared ${stonesCleared} stones`);
+            }
+        }
+
+        // UI Manager to handle display updates
+        class UIManager {
+            constructor() {
+                this.blackClock = document.getElementById('black-clock');
+                this.whiteClock = document.getElementById('white-clock');
+                this.blackName = document.getElementById('black-name');
+                this.whiteName = document.getElementById('white-name');
+                this.blackPoints = document.getElementById('black-points');
+                this.whitePoints = document.getElementById('white-points');
+                this.pieChart = document.getElementById('pie');
+                this.pieText = document.getElementById('pie-text');
+                this.pieCenter = document.getElementById('pie-over');
+                this.gameStatus = document.getElementById('game-status');
+                this.blackTurnStone = document.getElementById('black-turn-stone');
+                this.whiteTurnStone = document.getElementById('white-turn-stone');
+                this.gameOverOverlay = document.getElementById('game-over-overlay');
+                this.gameOverText = document.getElementById('game-over-text');
+                
+                this.boardRenderer = new BoardRenderer();
+                this.scoreBarRenderer = new ScoreBarRenderer();
+                this.currentMoveAnalysis = null; // Store current move analysis
+                this.previousMoveAnalysis = null; // Store previous move analysis for quality comparison
+                this.currentMoveQualityColor = "#2a5298"; // Default pie center color
+                this.previousBestMove = null; // Store best move from previous analysis
+                
+                // Animation state variables
+                this.previousBlackPercent = 50; // For pie chart animation
+                this.previousBlackScores = Array(11).fill(0); // For confidence bucket animation
+                this.previousWhiteScores = Array(11).fill(0); // For confidence bucket animation
+                this.previousBlackTotal = 0; // For score text animation
+                this.previousWhiteTotal = 0; // For score text animation
+                
+                // Game state variables
+                this.gameFinished = false; // Track if game is over
+                
+                // URL parameter detection for pattern feature
+                this.colorMode = this.getUrlParameter('c'); // 'black', 'white', 'quality', or null
+                this.topPosition = this.getUrlParameter('t') === '1';
+                
+                // Move shape-name to top position if requested
+                if (this.topPosition) {
+                    this.moveShapeNameToTop();
+                }
+                
+                console.log(`[UI] Color mode: ${this.colorMode}, Top position: ${this.topPosition}`);
+                
+                this.setupBoard();
+                this.setupScoreBar();
+                this.setupEventHandlers();
+            }
+
+            setupBoard() {
+                // Create SVG board
+                this.boardRenderer.createBoard();
+            }
+
+            setupScoreBar() {
+                // Create confidence chart
+                this.scoreBarRenderer.createScoreBar();
+            }
+
+            setupEventHandlers() {
+                // UIManager is now independent - GameEngine will call it directly
+                this.gameStatus.textContent = 'Waiting for game data...';
+            }
+
+            getUrlParameter(name) {
+                const urlParams = new URLSearchParams(window.location.search);
+                return urlParams.get(name);
+            }
+
+            moveShapeNameToTop() {
+                const shapeNameElement = document.getElementById('shape-name');
+                const informationElement = document.querySelector('.information');
+                const container = document.querySelector('.container');
+                
+                if (shapeNameElement && informationElement && container) {
+                    // Move shape-name to be between information and board
+                    container.insertBefore(shapeNameElement, informationElement.nextSibling);
+                    console.log('[UI] Moved shape-name to top position');
+                }
+            }
+
+            updateUI(gameState) {
+                // Update player names
+                if (gameState.players) {
+                    this.blackName.textContent = gameState.players.black.name;
+                    this.whiteName.textContent = gameState.players.white.name;
+                }
+
+                // DON'T update board here - it will be handled by explicit updateBoard calls with proper board state
+
+                // Update score (placeholder)
+                this.updateScore(gameState);
+
+                // Update game status and turn indicator
+                this.updateGameStatus(gameState);
+                
+                // Ensure turn indicator is updated even if game status doesn't change
+                this.updateTurnIndicator(gameState.currentPlayer);
+            }
+
+            updateClock(clockData) {
+                if (clockData && clockData.black) {
+                    this.blackClock.textContent = this.formatTime(clockData.black);
+                }
+                if (clockData && clockData.white) {
+                    this.whiteClock.textContent = this.formatTime(clockData.white);
+                }
+            }
+
+            updateBoard(moves, boardState = null) {
+                console.log('[UI] updateBoard called with boardState:', boardState ? 'YES' : 'NO');
+                console.log('[UI] Moves length:', moves ? moves.length : 0);
+                
+                // Clear existing stones FIRST
+                this.boardRenderer.clearAllStones();
+
+                if (boardState) {
+                    console.log('[UI] ONLY using board state - ignoring move history to preserve captures');
+                    let stonesPlaced = 0;
+                    // Use ONLY the board state (includes captures)
+                    for (let x = 0; x < 19; x++) {
+                        for (let y = 0; y < 19; y++) {
+                            const stoneValue = boardState[x][y];
+                            if (stoneValue !== 0) {
+                                const stone = this.boardRenderer.getStoneElement(x, y);
+                                if (stone) {
+                                    const stoneImageSrc = stoneValue === 1 ? CONFIG.IMAGES.BLACK_STONE : CONFIG.IMAGES.WHITE_STONE;
+                                    stone.setAttributeNS("http://www.w3.org/1999/xlink", "href", stoneImageSrc);
+                                    stonesPlaced++;
+                                } else {
+                                    console.warn(`[UI] No stone element found for position ${x},${y}`);
+                                }
+                            }
+                        }
+                    }
+                    console.log(`[UI] Placed ${stonesPlaced} stones using board state`);
+                    
+                    // Mark current move ONLY if we have moves and coordinates
+                    if (moves && moves.length > 0) {
+                        const lastMove = moves[moves.length - 1];
+                        if (lastMove.coordinates) {
+                            this.markCurrentMove(lastMove.coordinates, lastMove.move);
+                        }
+                    }
+                } else {
+                    console.log('[UI] Using move history to render stones (no board state available)');
+                    // Fallback to move history only when no board state
+                    if (moves) {
+                        moves.forEach((move, index) => {
+                            if (move.coordinates) {
+                                const [col, row] = move.coordinates;
+                                const stone = this.boardRenderer.getStoneElement(col, row);
+                                if (stone) {
+                                    const stoneImageSrc = move.color === 'black' ? CONFIG.IMAGES.BLACK_STONE : CONFIG.IMAGES.WHITE_STONE;
+                                    stone.setAttributeNS("http://www.w3.org/1999/xlink", "href", stoneImageSrc);
+                                }
+                            }
+                        });
+                        
+                        // Mark current move
+                        if (moves.length > 0) {
+                            const lastMove = moves[moves.length - 1];
+                            if (lastMove.coordinates) {
+                                this.markCurrentMove(lastMove.coordinates, lastMove.move);
+                            }
+                        }
+                    }
+                }
+            }
+
+            markCurrentMove(coordinates, moveNotation = null) {
+                // Store coordinates and move notation for analysis updates
+                this.lastMoveCoordinates = coordinates;
+                this.lastMoveNotation = moveNotation;
+                
+                // Remove existing move marker
+                const oldMarker = document.getElementById(CONFIG.ELEMENT_IDS.CURRENT_MOVE_MARKER);
+                if (oldMarker) {
+                    oldMarker.remove();
+                }
+
+                const [col, row] = coordinates;
+                const stone = this.boardRenderer.getStoneElement(col, row);
+                if (!stone) return;
+
+                const svgContainer = stone.parentNode;
+                
+                // Determine what color stone was played
+                const stoneImg = stone.getAttributeNS("http://www.w3.org/1999/xlink", "href");
+                const isBlackStone = stoneImg === CONFIG.IMAGES.BLACK_STONE;
+                const strokeColor = isBlackStone ? "#FFFFFF" : "#000000"; // White stroke for black stone, black stroke for white stone
+                
+                // Determine color based on analysis result or default to green
+                let color = "#4CAF50"; // Default to green
+                
+                // Check if this move matches the previous best move (blue move)
+                if (this.previousBestMove && this.lastMoveNotation) {
+                    const playedMove = this.lastMoveNotation.toUpperCase();
+                    const bestMove = this.previousBestMove.toUpperCase();
+                    if (playedMove === bestMove) {
+                        color = "#2196F3"; // Blue for best move
+                        console.log('[UI] BLUE MOVE! Played:', playedMove, 'matched best move:', bestMove);
+                    } else {
+                        // Calculate normal move quality
+                        if (this.currentMoveAnalysis && this.previousMoveAnalysis) {
+                            const currentAnalysis = this.currentMoveAnalysis.analysis;
+                            const previousAnalysis = this.previousMoveAnalysis.analysis;
+                            
+                            if (currentAnalysis && previousAnalysis && currentAnalysis.rootInfo && previousAnalysis.rootInfo) {
+                                // Calculate score loss: difference between previous position and current position
+                                const previousWinrate = previousAnalysis.rootInfo.winrate || 0;
+                                const currentWinrate = currentAnalysis.rootInfo.winrate || 0;
+                                const scoreLoss = Math.abs(previousWinrate - currentWinrate) * 100; // Convert to percentage points
+                                color = getMoveQualityColor(scoreLoss);
+                                console.log('[UI] Move quality - Previous WR:', previousWinrate, 'Current WR:', currentWinrate, 'Loss:', scoreLoss, 'Color:', color);
+                            }
+                        }
+                    }
+                } else if (this.currentMoveAnalysis && this.previousMoveAnalysis) {
+                    const currentAnalysis = this.currentMoveAnalysis.analysis;
+                    const previousAnalysis = this.previousMoveAnalysis.analysis;
+                    
+                    if (currentAnalysis && previousAnalysis && currentAnalysis.rootInfo && previousAnalysis.rootInfo) {
+                        // Calculate score loss: difference between previous position and current position
+                        const previousWinrate = previousAnalysis.rootInfo.winrate || 0;
+                        const currentWinrate = currentAnalysis.rootInfo.winrate || 0;
+                        const scoreLoss = Math.abs(previousWinrate - currentWinrate) * 100; // Convert to percentage points
+                        color = getMoveQualityColor(scoreLoss);
+                        console.log('[UI] Move quality - Previous WR:', previousWinrate, 'Current WR:', currentWinrate, 'Loss:', scoreLoss, 'Color:', color);
+                    }
+                } else if (!this.previousMoveAnalysis) {
+                    // Default to good move if no previous analysis
+                    color = "#FFEB3B"; // Good move quality (yellow)
+                    console.log('[UI] Move quality - No previous analysis, defaulting to good');
+                }
+                
+                // Store the move quality color and update pie center
+                this.currentMoveQualityColor = color;
+                this.updatePieCenter();
+
+                // Create a colored stone overlay to replace the brown stone
+                const radius = parseFloat(stone.getAttribute("width")) / 2;
+                const circle = document.createElementNS(CONFIG.SVG_NS, "circle");
+
+                const cx = parseFloat(stone.getAttribute("x")) + radius;
+                const cy = parseFloat(stone.getAttribute("y")) + radius;
+                circle.setAttributeNS(null, "cx", cx);
+                circle.setAttributeNS(null, "cy", cy);
+                circle.setAttributeNS(null, "r", radius * 0.525); // 75% of previous size
+                circle.setAttributeNS(null, "stroke-width", "2");
+                circle.setAttributeNS(null, "fill", color);
+                circle.setAttributeNS(null, "stroke", strokeColor);
+                circle.style.fill = color; // Force the fill color via style
+                circle.setAttributeNS(null, "id", CONFIG.ELEMENT_IDS.CURRENT_MOVE_MARKER);
+                circle.setAttributeNS(null, "class", "current-move-marker");
+
+                svgContainer.appendChild(circle);
+            }
+
+            updateScore(gameState) {
+                // Note: Confidence totals are displayed by scoreBarRenderer.updateScoreText()
+                // Don't overwrite the confidence chart text with capture counts
+                
+                // Capture counts are available in gameState.captures if needed elsewhere
+                const blackCaptures = gameState.captures ? gameState.captures.black : 0;
+                const whiteCaptures = gameState.captures ? gameState.captures.white : 0;
+                
+                // TODO: Display captures elsewhere if needed (not in confidence chart)
+            }
+
+            updateWinrate(winratePercent) {
+                const winningPercent = Math.max(0, Math.min(100, winratePercent));
+                
+                // BLACK = ALWAYS LEFT TO RIGHT (clockwise from top)
+                // WHITE = ALWAYS RIGHT TO LEFT (counter-clockwise from top)
+                // Use BLACK's actual winrate percentage for the pie chart
+                
+                let blackPercent = 50; // Default
+                let isBlackWinning = true;
+                
+                if (this.currentMoveAnalysis && this.currentMoveAnalysis.analysis && this.currentMoveAnalysis.analysis.rootInfo) {
+                    const blackWinrate = this.currentMoveAnalysis.analysis.rootInfo.winrate;
+                    blackPercent = Math.max(0, Math.min(100, blackWinrate * 100));
+                    isBlackWinning = blackWinrate > 0.5;
+                }
+                
+                // Store previous value for animation
+                const previousBlackPercent = this.previousBlackPercent || 50;
+                this.previousBlackPercent = blackPercent;
+                
+                // If there's a significant change, animate the pie chart
+                if (Math.abs(blackPercent - previousBlackPercent) > 0.1) {
+                    this.animatePieChart(previousBlackPercent, blackPercent);
+                } else {
+                    // Direct update if change is too small
+                    this.pieChart.style.backgroundImage = 
+                        `conic-gradient(white 0% ${100 - blackPercent}%, black ${100 - blackPercent}% 100%)`;
+                    
+                    // Update text immediately for small changes
+                    this.pieText.textContent = `${Math.round(winningPercent)}%`;
+                }
+            }
+
+            animatePieChart(fromPercent, toPercent) {
+                // Animation duration in milliseconds
+                const duration = 600;
+                const startTime = performance.now();
+                
+                // Get the winning percentage for text animation
+                const fromWinningPercent = Math.max(fromPercent, 100 - fromPercent);
+                const toWinningPercent = Math.max(toPercent, 100 - toPercent);
+                
+                const animate = (currentTime) => {
+                    const elapsed = currentTime - startTime;
+                    const progress = Math.min(elapsed / duration, 1);
+                    
+                    // Easing function for smooth animation
+                    const easeOutQuart = 1 - Math.pow(1 - progress, 4);
+                    
+                    // Calculate current percentage
+                    const currentPercent = fromPercent + (toPercent - fromPercent) * easeOutQuart;
+                    
+                    // Calculate current winning percentage for text
+                    const currentWinningPercent = fromWinningPercent + (toWinningPercent - fromWinningPercent) * easeOutQuart;
+                    
+                    // Update pie chart
+                    this.pieChart.style.backgroundImage = 
+                        `conic-gradient(white 0% ${100 - currentPercent}%, black ${100 - currentPercent}% 100%)`;
+                    
+                    // Update animated text
+                    this.pieText.textContent = `${Math.round(currentWinningPercent)}%`;
+                    
+                    // Continue animation if not complete
+                    if (progress < 1) {
+                        requestAnimationFrame(animate);
+                    }
+                };
+                
+                requestAnimationFrame(animate);
+            }
+
+            updatePieCenter() {
+                if (this.pieCenter) {
+                    this.pieCenter.style.backgroundColor = this.currentMoveQualityColor;
+                }
+            }
+
+            calculateMoveQuality() {
+                // Calculate move quality color without placing a marker
+                let color = "#4CAF50"; // Default to green
+                
+                // Check if this move matches the previous best move (blue move)
+                if (this.previousBestMove && this.lastMoveNotation) {
+                    const playedMove = this.lastMoveNotation.toUpperCase();
+                    const bestMove = this.previousBestMove.toUpperCase();
+                    if (playedMove === bestMove) {
+                        color = "#2196F3"; // Blue for best move
+                        console.log('[UI] BLUE MOVE! Played:', playedMove, 'matched best move:', bestMove);
+                    } else {
+                        // Calculate normal move quality
+                        if (this.currentMoveAnalysis && this.previousMoveAnalysis) {
+                            const currentAnalysis = this.currentMoveAnalysis.analysis;
+                            const previousAnalysis = this.previousMoveAnalysis.analysis;
+                            
+                            if (currentAnalysis && previousAnalysis && currentAnalysis.rootInfo && previousAnalysis.rootInfo) {
+                                // Calculate score loss: difference between previous position and current position
+                                const previousWinrate = previousAnalysis.rootInfo.winrate || 0;
+                                const currentWinrate = currentAnalysis.rootInfo.winrate || 0;
+                                const scoreLoss = Math.abs(previousWinrate - currentWinrate) * 100; // Convert to percentage points
+                                color = getMoveQualityColor(scoreLoss);
+                                console.log('[UI] Move quality - Previous WR:', previousWinrate, 'Current WR:', currentWinrate, 'Loss:', scoreLoss, 'Color:', color);
+                            }
+                        }
+                    }
+                } else if (this.currentMoveAnalysis && this.previousMoveAnalysis) {
+                    const currentAnalysis = this.currentMoveAnalysis.analysis;
+                    const previousAnalysis = this.previousMoveAnalysis.analysis;
+                    
+                    if (currentAnalysis && previousAnalysis && currentAnalysis.rootInfo && previousAnalysis.rootInfo) {
+                        // Calculate score loss: difference between previous position and current position
+                        const previousWinrate = previousAnalysis.rootInfo.winrate || 0;
+                        const currentWinrate = currentAnalysis.rootInfo.winrate || 0;
+                        const scoreLoss = Math.abs(previousWinrate - currentWinrate) * 100; // Convert to percentage points
+                        color = getMoveQualityColor(scoreLoss);
+                        console.log('[UI] Move quality - Previous WR:', previousWinrate, 'Current WR:', currentWinrate, 'Loss:', scoreLoss, 'Color:', color);
+                    }
+                } else if (!this.previousMoveAnalysis) {
+                    // Default to good move if no previous analysis
+                    color = "#FFEB3B"; // Good move quality (yellow)
+                    console.log('[UI] Move quality - No previous analysis, defaulting to good');
+                }
+                
+                // Store the move quality color and update pie center
+                this.currentMoveQualityColor = color;
+                this.updatePieCenter();
+            }
+
+            updateGameStatus(gameState) {
+                let status = 'Connected';
+                if (gameState.phase === 'finished') {
+                    status = 'Game Finished';
+                    this.gameFinished = true;
+                    this.showGameOverDisplay(gameState);
+                } else {
+                    this.gameFinished = false;
+                    this.hideGameOverDisplay();
+                    if (gameState.currentPlayer) {
+                        status = `${gameState.currentPlayer.charAt(0).toUpperCase() + gameState.currentPlayer.slice(1)} to play`;
+                    }
+                }
+                this.gameStatus.textContent = status;
+                
+                // Update turn indicator stones
+                this.updateTurnIndicator(gameState.currentPlayer);
+            }
+
+            showGameOverDisplay(gameState) {
+                // Determine winner based on available data
+                let winner = 'B+'; // Default to Black wins
+                
+                // Check if we have outcome data in various possible formats
+                if (gameState.outcome) {
+                    const outcome = gameState.outcome.toString().toLowerCase();
+                    if (outcome.includes('w+') || outcome.startsWith('w') || outcome.includes('white')) {
+                        winner = 'W+';
+                    } else if (outcome.includes('b+') || outcome.startsWith('b') || outcome.includes('black')) {
+                        winner = 'B+';
+                    }
+                } else if (gameState.winner) {
+                    // Some systems might use a 'winner' field
+                    const winnerField = gameState.winner.toString().toLowerCase();
+                    if (winnerField.includes('w') || winnerField.includes('white')) {
+                        winner = 'W+';
+                    } else if (winnerField.includes('b') || winnerField.includes('black')) {
+                        winner = 'B+';
+                    }
+                } else if (this.currentMoveAnalysis && this.currentMoveAnalysis.analysis && this.currentMoveAnalysis.analysis.rootInfo) {
+                    // Use winrate to determine likely winner as fallback
+                    const blackWinrate = this.currentMoveAnalysis.analysis.rootInfo.winrate;
+                    winner = blackWinrate > 0.5 ? 'B+' : 'W+';
+                    console.log('[UI] Using AI winrate to determine winner:', blackWinrate, '-> Winner:', winner);
+                }
+                
+                this.gameOverText.textContent = winner;
+                this.gameOverOverlay.style.display = 'flex';
+                
+                console.log('[UI] Game Over - Winner:', winner, 'GameState:', gameState);
+            }
+
+            hideGameOverDisplay() {
+                this.gameOverOverlay.style.display = 'none';
+            }
+
+            updateTurnIndicator(currentPlayer) {
+                // Reset both stones
+                this.blackTurnStone.classList.remove('active');
+                this.whiteTurnStone.classList.remove('active');
+                
+                if (currentPlayer === 'black') {
+                    this.blackTurnStone.classList.add('active');
+                } else if (currentPlayer === 'white') {
+                    this.whiteTurnStone.classList.add('active');
+                }
+                // If no current player, both stones remain hidden
+            }
+
+            formatTime(timeData) {
+                if (!timeData || typeof timeData !== 'object') {
+                    return '00:00';
+                }
+                
+                const totalSeconds = Math.floor(timeData.time / 1000);
+                const minutes = Math.floor(totalSeconds / 60);
+                const seconds = totalSeconds % 60;
+                
+                // Show periods if in byo-yomi
+                if (timeData.periods > 0 && timeData.time <= 0) {
+                    const periodTimeLeft = Math.floor(timeData.period_time_left / 1000);
+                    return `${periodTimeLeft} ${timeData.periods}`;
+                }
+                
+                return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            }
+
+            updateAnalysis(analysisData) {
+                // Skip analysis if game is finished
+                if (this.gameFinished) {
+                    console.log('[UI] Game is finished - skipping analysis update');
+                    return;
+                }
+                
+                console.log('[UI] Analysis result received:', analysisData);
+                
+                // Store previous analysis before updating current
+                this.previousMoveAnalysis = this.currentMoveAnalysis;
+                
+                // Store the best move from PREVIOUS analysis for current move comparison
+                if (this.previousMoveAnalysis && this.previousMoveAnalysis.analysis && this.previousMoveAnalysis.analysis.moveInfos) {
+                    const bestMove = this.previousMoveAnalysis.analysis.moveInfos[0];
+                    this.previousBestMove = bestMove ? bestMove.move : null;
+                    console.log('[UI] Previous AI recommendation was:', this.previousBestMove, 'for the move that was just played');
+                } else {
+                    this.previousBestMove = null;
+                }
+                
+                this.currentMoveAnalysis = analysisData;
+                
+                // Show current AI recommendation for next move
+                if (analysisData.analysis && analysisData.analysis.moveInfos && analysisData.analysis.moveInfos[0]) {
+                    const nextBestMove = analysisData.analysis.moveInfos[0].move;
+                    console.log('[UI] AI top move recommendation for NEXT move:', nextBestMove);
+                }
+                
+                // Update winrate display - always show winning percentage
+                if (analysisData.analysis && analysisData.analysis.rootInfo) {
+                    const blackWinrate = analysisData.analysis.rootInfo.winrate;
+                    const winningWinrate = blackWinrate > 0.5 ? blackWinrate : (1 - blackWinrate);
+                    this.updateWinrate(winningWinrate * 100);
+                }
+                
+                // Update ownership analysis if available
+                if (analysisData.analysis && analysisData.analysis.ownership) {
+                    this.updateOwnershipAnalysis(analysisData.analysis);
+                }
+                
+                // Update move indicator with quality color if we have the current move
+                if (this.lastMoveCoordinates) {
+                    this.markCurrentMove(this.lastMoveCoordinates, this.lastMoveNotation);
+                } else {
+                    // Update pie center even if no move marker to show
+                    this.calculateMoveQuality();
+                }
+            }
+            
+            updatePatternMatch(patternData) {
+                // Update the shape-name div with pattern information
+                const shapeNameElement = document.getElementById('shape-name');
+                if (shapeNameElement) {
+                    const moveName = patternData.moveName || 'No pattern found';
+                    shapeNameElement.textContent = moveName;
+                    
+                    // Only update colors if color mode is specified via URL parameter
+                    if (this.colorMode) {
+                        let color;
+                        
+                        if (this.colorMode === 'black') {
+                            color = '#000000'; // Black text
+                        } else if (this.colorMode === 'white') {
+                            color = '#FFFFFF'; // White text
+                        } else if (this.colorMode === 'quality') {
+                            // Use the same color as the move quality indicator
+                            color = this.currentMoveQualityColor || '#4CAF50';
+                        }
+                        
+                        // Apply the color
+                        shapeNameElement.style.setProperty('color', color, 'important');
+                        
+                        if (patternData.moveName) {
+                            // Pattern found - use bold styling
+                            shapeNameElement.style.setProperty('font-weight', 'bold', 'important');
+                            shapeNameElement.style.setProperty('text-shadow', '0 1px 2px rgba(0,0,0,0.3)', 'important');
+                            shapeNameElement.style.setProperty('font-size', '16px', 'important');
+                        } else {
+                            // No pattern found - use normal styling
+                            shapeNameElement.style.setProperty('font-weight', 'normal', 'important');
+                            shapeNameElement.style.setProperty('text-shadow', 'none', 'important');
+                            shapeNameElement.style.setProperty('font-size', '14px', 'important');
+                        }
+                        
+                        console.log(`[UIManager] Pattern match updated with color: ${moveName} (${color})`);
+                    } else {
+                        // No color mode specified - keep default white text with black outline
+                        console.log(`[UIManager] Pattern match updated (default white): ${moveName}`);
+                    }
+                }
+            }
+
+            updateOwnershipAnalysis(analysis) {
+                const ownership = analysis.ownership;
+                if (!ownership || ownership.length === 0) {
+                    console.log('[UI] No ownership data received');
+                    return;
+                }
+
+                function initBuckets() {
+                    return {
+                        total: 0,
+                        buckets: Array(11).fill(0)
+                    };
+                }
+
+                const result = {
+                    player_1: initBuckets(), // Black
+                    player_2: initBuckets()  // White
+                };
+
+                for (let i = 0; i < ownership.length; i++) {
+                    const val = ownership[i];
+                    const absVal = Math.abs(val);
+                    const bucketIndex = Math.min(Math.floor(absVal * 10), 10);
+
+                    if (val >= 0) {
+                        result.player_1.total += val;
+                        result.player_1.buckets[bucketIndex] += val;
+                    } else {
+                        result.player_2.total += absVal;
+                        result.player_2.buckets[bucketIndex] += absVal;
+                    }
+                }
+
+                // Round totals to 3 decimals
+                result.player_1.total = +result.player_1.total.toFixed(3);
+                result.player_2.total = +result.player_2.total.toFixed(3);
+
+                // Apply score lead adjustment to match actual game evaluation
+                const scoreLead = analysis.rootInfo?.scoreLead || 0;
+                this.adjustConfidenceForScoreLead(result, scoreLead);
+
+                // Update the confidence chart
+                this.scoreBarRenderer.updateScoreBar(result.player_1.buckets, result.player_2.buckets);
+
+                console.log('[UI] Ownership analysis - Black:', result.player_1.total, 'White:', result.player_2.total);
+                console.log('[UI] Black confidence buckets:', result.player_1.buckets);
+                console.log('[UI] White confidence buckets:', result.player_2.buckets);
+            }
+
+            adjustConfidenceForScoreLead(result, scoreLead) {
+                // Calculate current confidence difference (black - white)
+                const confidenceDiff = result.player_1.total - result.player_2.total;
+                
+                // Score lead > 0 means Black is ahead, < 0 means White is ahead
+                const scoreLeadDiff = scoreLead;
+                
+                // Calculate the adjustment needed to match score lead
+                const adjustment = scoreLeadDiff - confidenceDiff;
+                
+                console.log(`[UI] Score Lead Adjustment - Score Lead: ${scoreLead.toFixed(1)}, Confidence Diff: ${confidenceDiff.toFixed(1)}, Adjustment: ${adjustment.toFixed(1)}`);
+                
+                if (Math.abs(adjustment) > 0.1) { // Only adjust if meaningful difference
+                    if (adjustment > 0) {
+                        // Need to add points to Black (or remove from White)
+                        const pointsToAdd = adjustment;
+                        
+                        // Add to Black's highest confidence bucket (90-100%)
+                        result.player_1.buckets[10] += pointsToAdd;
+                        result.player_1.total += pointsToAdd;
+                        
+                        console.log(`[UI] Added ${pointsToAdd.toFixed(1)} points to Black to match score lead`);
+                    } else {
+                        // Need to add points to White (or remove from Black)
+                        const pointsToAdd = Math.abs(adjustment);
+                        
+                        // Add to White's highest confidence bucket (90-100%)
+                        result.player_2.buckets[10] += pointsToAdd;
+                        result.player_2.total += pointsToAdd;
+                        
+                        console.log(`[UI] Added ${pointsToAdd.toFixed(1)} points to White to match score lead`);
+                    }
+                    
+                    // Round adjusted totals
+                    result.player_1.total = +result.player_1.total.toFixed(3);
+                    result.player_2.total = +result.player_2.total.toFixed(3);
+                }
+            }
+
+            updateScoreBar(ownershipData) {
+                // Update the confidence chart with ownership data
+                if (this.scoreBarRenderer) {
+                    this.scoreBarRenderer.updateScoreBar(ownershipData);
+                }
+            }
+        }
+
+        // Initialize UI when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            window.uiManager = new UIManager();
+            console.log('[UI] UIManager initialized and ready to receive updates');
+        });
+
+        // Global helper function to check if game is finished (for external analysis systems)
+        window.isGameFinished = () => {
+            return window.uiManager ? window.uiManager.gameFinished : false;
+        };
+
+        // Move Quality Calculation
+        function getMoveQualityColor(scoreLoss) {
+            if (scoreLoss < 1) return "#4CAF50"; // Excellent - green
+            if (scoreLoss < 3) return "#8BC34A"; // Very good - light green
+            if (scoreLoss < 6) return "#FFEB3B"; // Good - yellow
+            if (scoreLoss < 12) return "#FF9800"; // Questionable - orange
+            if (scoreLoss < 24) return "#F44336"; // Bad - red
+            return "#9C27B0"; // Terrible - purple
+        }
+    </script>
+</body>
+</html>
