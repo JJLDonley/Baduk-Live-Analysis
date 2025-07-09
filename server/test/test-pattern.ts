@@ -1,4 +1,4 @@
-import { PatternMatchingService, ogsStringToVertex, ogsMoveListFromString } from './pattern.ts';
+import { PatternMatchingService, ogsStringToVertex, ogsMoveListFromString } from '../pattern.ts';
 
 // Helper to build a board from a move list (alternating colors, 0=empty, 1=black, -1=white)
 function buildBoardFromMoves(moves: [number, number][], size = 19): number[][] {

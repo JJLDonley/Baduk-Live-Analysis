@@ -1,3 +1,5 @@
+import { join, resolve } from "https://deno.land/std/path/mod.ts";
+
 export interface ServerConfig {
     // Server settings
     port: number;
@@ -127,15 +129,16 @@ export class ConfigManager {
     }
     
     public getKataGoExecutablePath(): string {
-        return `${this.config.katago.directory}/${this.config.katago.executable}`;
+        // Resolve absolute path from working directory + relative path
+        return resolve(join(Deno.cwd(), this.config.katago.directory, this.config.katago.executable));
     }
     
     public getKataGoModelPath(): string {
-        return `${this.config.katago.directory}/${this.config.katago.model}`;
+        return resolve(join(Deno.cwd(), this.config.katago.directory, this.config.katago.model));
     }
     
     public getKataGoConfigPath(): string {
-        return `${this.config.katago.directory}/${this.config.katago.config}`;
+        return resolve(join(Deno.cwd(), this.config.katago.directory, this.config.katago.config));
     }
     
     public validateConfig(): { valid: boolean; errors: string[] } {
