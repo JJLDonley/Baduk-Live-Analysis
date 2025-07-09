@@ -74,7 +74,8 @@ Review games support additional URL parameters for enhanced functionality:
 - `in=<time>s` - Increment time (required for Fischer)
 
 ### **Optional Parameters**
-- `c=<color>` - Color preference (black/white)
+- `c=<color>` - Color preference (black/white/quality)
+- `c=quality` - This make it so it matches same color as the move quality
 
 ### **Examples**
 
