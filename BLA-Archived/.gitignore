@@ -1,8 +1,0 @@
-/flood_fill_logs.json
-/gtp_logs
-/node_modules
-katago/*
-analysis_logs/
-test.html
-OGS.js
-rebuild/
