@@ -882,7 +882,8 @@ class GameEngineWrapper {
             
             // updateReviewMoves handles everything including UI updates with correct board state
             // This includes empty strings (which represent empty board state)
-            this.updateReviewMoves(data.m);
+            // Pass the full data object to preserve timestamp information
+            this.updateReviewMoves(data.m, data.ts);
             
             // No additional UI calls needed - updateReviewMoves does it all correctly
         });
@@ -1146,6 +1147,17 @@ class GameEngineWrapper {
         }
         console.log(`[GameEngine] INITIAL FINAL CAPTURES: Black=${finalCaptures.black}, White=${finalCaptures.white}`);
         
+        // Build timestamp information from all review entries
+        const timestamps = {};
+        filteredData.forEach(entry => {
+            if (entry.ts && entry.m) {
+                const entryMoves = this.parseReviewMoves(entry.m);
+                if (entryMoves.length > 0) {
+                    timestamps[entryMoves.length] = entry.ts;
+                }
+            }
+        });
+        
         this.currentReview = {
             id: this.id,
             name: gameData.gamedata.game_name,
@@ -1161,7 +1173,9 @@ class GameEngineWrapper {
                 }
             },
             currentPlayer: moves.length % 2 === 0 ? "black" : "white",
-            captures: finalCaptures
+            captures: finalCaptures,
+            timestamps: timestamps,
+            reviewEntries: filteredData // Store original entries for time calculation
         };
         
         console.log(`[GameEngine] Review ${this.id} initialized with ${moves.length} moves`);
@@ -1457,7 +1471,7 @@ class GameEngineWrapper {
     }
     
     // Update review moves
-    updateReviewMoves(moveString) {
+    updateReviewMoves(moveString, timestamp) {
         if (!this.currentReview) return null;
         
         // Parse moves and update board state efficiently
@@ -1473,6 +1487,19 @@ class GameEngineWrapper {
         // Get final state after replay
         const finalBoardState = this.boardController.getBoardState();
         const finalCaptures = this.boardController.captures;
+        
+        // Store timestamp information for the current move count
+        if (!this.currentReview.timestamps) {
+            this.currentReview.timestamps = {};
+        }
+        if (timestamp && moves.length > 0) {
+            this.currentReview.timestamps[moves.length] = timestamp;
+        }
+        
+        // Store the current move's timestamp for time calculation
+        if (timestamp) {
+            this.currentReview.lastMoveTimestamp = timestamp;
+        }
         
         // Update review state with final results
         this.currentReview.moves = moves;

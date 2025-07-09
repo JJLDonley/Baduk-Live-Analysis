@@ -55,6 +55,59 @@ http://localhost:8080/game/77081213    # Live game
 http://localhost:8080/review/123456    # Review/demo board
 ```
 
+## URL Parameters for Review Games
+
+Review games support additional URL parameters for enhanced functionality:
+
+### **Required Parameters**
+- `t=1` - Enable timer mode (required for clock display)
+- `tc=<type>` - Time control type
+- `mt=<time>` - Main time
+
+### **Time Control Types**
+- `tc=byo` - Byo-yomi (Japanese overtime)
+- `tc=can` - Canadian (stone-based overtime)  
+- `tc=fis` - Fischer (increment per move)
+
+### **Time Control Specific Parameters**
+- `pd=<time>s<count>` - Period time and count (required for byo-yomi/Canadian)
+- `in=<time>s` - Increment time (required for Fischer)
+
+### **Optional Parameters**
+- `c=<color>` - Color preference (black/white)
+
+### **Examples**
+
+#### Fischer Time Control
+```
+http://localhost:8080/review/123456/?t=1&c=white&tc=fis&mt=60m&in=10s
+# 60 minutes main time + 10 seconds increment per move
+```
+
+#### Byo-yomi Time Control
+```
+http://localhost:8080/review/123456/?t=1&c=black&tc=byo&mt=40m&pd=30sx5
+# 40 minutes main time + 5 periods of 30 seconds each
+```
+
+#### Canadian Time Control
+```
+http://localhost:8080/review/123456/?t=1&tc=can&mt=10m&pd=10mx15
+# 10 minutes main time + 15 stones per 10-minute period
+```
+
+### **Parameter Format**
+- **Time formats**: `30s` (seconds), `10m` (minutes), `1h` (hours)
+- **Period format**: `<time><unit>x<count>` (e.g., `30sx5` = 30 seconds × 5 periods)
+- **Colors**: `black`, `white`
+- **Timer**: `t=1` (enabled), `t=0` (disabled)
+
+### **Clock Display Rules**
+- Clocks are only shown when all required parameters are present
+- Fischer requires: `t`, `tc`, `mt`, `in`
+- Byo-yomi/Canadian requires: `t`, `tc`, `mt`, `pd`
+- Missing parameters will hide the clock display
+
 ## Project Structure
 
 ```

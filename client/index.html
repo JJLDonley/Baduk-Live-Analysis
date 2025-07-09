@@ -1042,6 +1042,40 @@
                 this.colorMode = this.getUrlParameter('c'); // 'black', 'white', 'quality', or null
                 this.topPosition = this.getUrlParameter('t') === '1';
                 
+                // Review timer parameters
+                this.reviewTimeControl = this.getUrlParameter('tc'); // 'byo', 'can', 'fis', or null
+                this.reviewMainTime = this.getUrlParameter('mt'); // e.g., '40m', '1h', '30m'
+                this.reviewPeriod = this.getUrlParameter('pd'); // e.g., '30sx5', '5mx15'
+                this.reviewIncrement = this.getUrlParameter('in'); // e.g., '30s'
+                
+                // Log time control settings
+                if (this.reviewTimeControl) {
+                    console.log('[UI] Time Control:', this.reviewTimeControl);
+                }
+                if (this.reviewMainTime) {
+                    console.log('[UI] Main Time:', this.reviewMainTime);
+                }
+                if (this.reviewPeriod) {
+                    console.log('[UI] Periods:', this.reviewPeriod);
+                }
+                if (this.reviewIncrement) {
+                    console.log('[UI] Increment:', this.reviewIncrement);
+                }
+                
+                // Review timer state - determine from URL path, not time control params
+                this.isReviewMode = window.location.pathname.includes('/review/');
+                this.reviewTimerStarted = false;
+                this.reviewFirstMoveTime = null;
+                this.reviewBlackRemainingTime = 0; // Remaining time, not used time
+                this.reviewWhiteRemainingTime = 0; // Remaining time, not used time
+                this.reviewCurrentPlayer = 'black';
+                
+                // Period/stone tracking for byo-yomi and Canadian
+                this.reviewBlackPeriodsRemaining = 0;
+                this.reviewWhitePeriodsRemaining = 0;
+                this.reviewBlackStonesRemaining = 0;
+                this.reviewWhiteStonesRemaining = 0;
+                
                 // Move shape-name to top position if requested
                 if (this.topPosition) {
                     this.moveShapeNameToTop();
@@ -1086,6 +1120,530 @@
                 }
             }
 
+            // Review timer parsing functions
+            parseMainTime(timeStr) {
+                if (!timeStr) return 0;
+                
+                const match = timeStr.match(/^(\d+)([mh])$/);
+                if (!match) return 0;
+                
+                const value = parseInt(match[1]);
+                const unit = match[2];
+                
+                if (unit === 'h') {
+                    return value * 60 * 60; // hours to seconds
+                } else if (unit === 'm') {
+                    return value * 60; // minutes to seconds
+                }
+                
+                return 0;
+            }
+
+            parsePeriod(periodStr) {
+                if (!periodStr) return { time: 0, count: 0 };
+                
+                const match = periodStr.match(/^(\d+)([sm])x(\d+)$/);
+                if (!match) return { time: 0, count: 0 };
+                
+                const value = parseInt(match[1]);
+                const unit = match[2];
+                const count = parseInt(match[3]);
+                
+                let time;
+                if (unit === 'h') {
+                    time = value * 60 * 60;
+                } else if (unit === 'm') {
+                    time = value * 60;
+                } else if (unit === 's') {
+                    time = value;
+                } else {
+                    time = 0;
+                }
+                
+                return { time, count };
+            }
+
+            parseIncrement(incrementStr) {
+                if (!incrementStr) return 0;
+                
+                const match = incrementStr.match(/^(\d+)([sm])$/);
+                if (!match) return 0;
+                
+                const value = parseInt(match[1]);
+                const unit = match[2];
+                
+                if (unit === 'm') {
+                    return value * 60;
+                } else if (unit === 's') {
+                    return value;
+                } else {
+                    return 0;
+                }
+            }
+
+            updateReviewTimer(moves) {
+                console.log('[UI] updateReviewTimer called with moves:', moves);
+                if (!this.isReviewMode || !moves || moves.length === 0) {
+                    return;
+                }
+                
+                // Initialize timer on first move
+                if (!this.reviewTimerStarted) {
+                    this.initializeReviewTimer();
+                    this.reviewTimerStarted = true;
+                }
+                
+                // Get timestamps from the review object
+                const reviewState = window.GameEngine?.getReviewState();
+                if (!reviewState || !reviewState.timestamps) {
+                    return;
+                }
+                
+                const moveNumber = moves.length;
+                const currentTime = reviewState.timestamps[moveNumber];
+                
+                if (!currentTime) {
+                    return;
+                }
+                
+                // Calculate time used for this move
+                let timeUsed = 0;
+                if (moveNumber > 1) {
+                    const previousTime = reviewState.timestamps[moveNumber - 1];
+                    if (previousTime) {
+                        timeUsed = Math.max(0, currentTime - previousTime);
+
+                    }
+                }
+                
+                // Determine which player made this move
+                const player = (moveNumber % 2 === 1) ? 'black' : 'white';
+                
+                // Subtract time used from player's remaining time
+                if (player === 'black') {
+                    this.reviewBlackRemainingTime -= timeUsed;
+                } else {
+                    this.reviewWhiteRemainingTime -= timeUsed;
+                }
+                
+                // Apply time control specific rules when move is played
+                if (this.reviewTimeControlInfo) {
+                    const incrementMs = this.reviewTimeControlInfo.increment * 1000;
+                    const periodTimeMs = this.reviewTimeControlInfo.periodTime * 1000;
+                    
+                    if (this.reviewTimeControlInfo.type === 'fis') {
+                        // Fischer: Add increment (even if time was at zero - forgiving for reviews)
+                        if (player === 'black') {
+                            this.reviewBlackRemainingTime = Math.max(0, this.reviewBlackRemainingTime) + incrementMs;
+                        } else {
+                            this.reviewWhiteRemainingTime = Math.max(0, this.reviewWhiteRemainingTime) + incrementMs;
+                        }
+                    } else if (this.reviewTimeControlInfo.type === 'byo') {
+                        // Byo-yomi: Use a period when main time expires, give back one period
+                        if (player === 'black') {
+                            if (this.reviewBlackRemainingTime <= 0 && this.reviewBlackPeriodsRemaining > 0) {
+                                this.reviewBlackRemainingTime = periodTimeMs; // Reset to full period time
+                                this.reviewBlackPeriodsRemaining--; // Use one period
+                            }
+                        } else {
+                            if (this.reviewWhiteRemainingTime <= 0 && this.reviewWhitePeriodsRemaining > 0) {
+                                this.reviewWhiteRemainingTime = periodTimeMs; // Reset to full period time
+                                this.reviewWhitePeriodsRemaining--; // Use one period
+                            }
+                        }
+                    } else if (this.reviewTimeControlInfo.type === 'can') {
+                        // Canadian: Track stones, add 10s safety net, reset when stones exhausted
+                        if (player === 'black') {
+                            if (this.reviewBlackRemainingTime <= 0) {
+                                if (this.reviewBlackStonesRemaining > 0) {
+                                    // Add 10s safety net and decrease stone counter
+                                    this.reviewBlackRemainingTime = 10000; // 10 second safety net
+                                    this.reviewBlackStonesRemaining--;
+                                } else {
+                                    // Reset Canadian period - new stones and full time
+                                    this.reviewBlackRemainingTime = periodTimeMs;
+                                    this.reviewBlackStonesRemaining = this.reviewTimeControlInfo.periodCount - 1; // -1 for current move
+                                }
+                            } else {
+                                // Normal move - just decrease stone counter if in Canadian period
+                                if (this.reviewBlackRemainingTime < this.reviewTimeControlInfo.mainTime * 1000) {
+                                    this.reviewBlackStonesRemaining--;
+                                }
+                            }
+                        } else {
+                            if (this.reviewWhiteRemainingTime <= 0) {
+                                if (this.reviewWhiteStonesRemaining > 0) {
+                                    // Add 10s safety net and decrease stone counter
+                                    this.reviewWhiteRemainingTime = 10000; // 10 second safety net
+                                    this.reviewWhiteStonesRemaining--;
+                                } else {
+                                    // Reset Canadian period - new stones and full time
+                                    this.reviewWhiteRemainingTime = periodTimeMs;
+                                    this.reviewWhiteStonesRemaining = this.reviewTimeControlInfo.periodCount - 1; // -1 for current move
+                                }
+                            } else {
+                                // Normal move - just decrease stone counter if in Canadian period
+                                if (this.reviewWhiteRemainingTime < this.reviewTimeControlInfo.mainTime * 1000) {
+                                    this.reviewWhiteStonesRemaining--;
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // Update current player (who is to move next)
+                this.reviewCurrentPlayer = (player === 'black') ? 'white' : 'black';
+                
+                // Set the timestamp for when this move was received (for live countdown)
+                this.reviewLastMoveTime = Date.now();
+                
+                // Start/restart the countdown timer
+                this.startReviewCountdown();
+                
+
+            }
+
+            initializeReviewTimer() {
+                // Parse time control parameters
+                const mainTimeSeconds = this.parseMainTime(this.reviewMainTime);
+                const periodInfo = this.parsePeriod(this.reviewPeriod);
+                const incrementSeconds = this.parseIncrement(this.reviewIncrement);
+                
+                // Store time control info for display
+                this.reviewTimeControlInfo = {
+                    mainTime: mainTimeSeconds,
+                    periodTime: periodInfo.time,
+                    periodCount: periodInfo.count,
+                    increment: incrementSeconds,
+                    type: this.reviewTimeControl
+                };
+                
+                // Calculate time already used from review history
+                const reviewState = window.GameEngine?.getReviewState();
+                if (reviewState && reviewState.reviewEntries && reviewState.moves.length > 0) {
+                    const timeCalculation = this.calculateAccumulatedTime(reviewState.reviewEntries, reviewState.moves.length);
+                    const mainTimeMs = mainTimeSeconds * 1000;
+                    
+                    // Start with main time, subtract time already used
+                    this.reviewBlackRemainingTime = mainTimeMs - timeCalculation.blackTime;
+                    this.reviewWhiteRemainingTime = mainTimeMs - timeCalculation.whiteTime;
+                    this.reviewCurrentPlayer = timeCalculation.currentPlayer;
+                    this.reviewLastMoveTime = Date.now(); // Use current time for countdown
+                    
+                    // Initialize periods/stones for time controls
+                    this.reviewBlackPeriodsRemaining = periodInfo.count;
+                    this.reviewWhitePeriodsRemaining = periodInfo.count;
+                    this.reviewBlackStonesRemaining = periodInfo.count;
+                    this.reviewWhiteStonesRemaining = periodInfo.count;
+                    
+                    console.log(`[UI] Estimated time settings after ${reviewState.moves.length} moves - Black: ${Math.floor(this.reviewBlackRemainingTime/1000)}s, White: ${Math.floor(this.reviewWhiteRemainingTime/1000)}s`);
+                } else {
+                    // Initialize for new game
+                    const mainTimeMs = mainTimeSeconds * 1000;
+                    this.reviewBlackRemainingTime = mainTimeMs;
+                    this.reviewWhiteRemainingTime = mainTimeMs;
+                    this.reviewCurrentPlayer = 'black';
+                    this.reviewLastMoveTime = null;
+                    
+                    // Initialize periods/stones for new game
+                    this.reviewBlackPeriodsRemaining = periodInfo.count;
+                    this.reviewWhitePeriodsRemaining = periodInfo.count;
+                    this.reviewBlackStonesRemaining = periodInfo.count;
+                    this.reviewWhiteStonesRemaining = periodInfo.count;
+                    
+                    console.log(`[UI] Estimated time settings - Both players start with ${Math.floor(mainTimeMs/1000)}s`);
+                }
+                
+                this.reviewCountdownInterval = null;
+                
+
+            }
+
+            calculateAccumulatedTime(reviewEntries, currentMoveCount) {
+                const incrementMs = this.reviewTimeControlInfo.increment * 1000;
+                const isFischer = this.reviewTimeControlInfo.type === 'fis';
+                
+                let blackTimeUsed = 0;
+                let whiteTimeUsed = 0;
+                let lastTimestamp = null;
+                
+                // Process each move to calculate time used
+                for (let i = 1; i < reviewEntries.length; i++) {
+                    const entry = reviewEntries[i];
+                    if (!entry.m || !entry.ts) continue;
+                    
+                    const moves = this.parseReviewMovesFromString(entry.m);
+                    const moveNumber = moves.length;
+                    
+                    if (moveNumber > currentMoveCount) break;
+                    
+                    const currentTimestamp = entry.ts;
+                    
+                    if (lastTimestamp) {
+                        const timeUsed = Math.max(0, currentTimestamp - lastTimestamp);
+                        const player = (moveNumber % 2 === 1) ? 'black' : 'white';
+                        
+                        if (player === 'black') {
+                            blackTimeUsed += timeUsed;
+                            // Add Fischer increment for each move
+                            if (isFischer) {
+                                blackTimeUsed = Math.max(0, blackTimeUsed - incrementMs);
+                            }
+                        } else {
+                            whiteTimeUsed += timeUsed;
+                            // Add Fischer increment for each move
+                            if (isFischer) {
+                                whiteTimeUsed = Math.max(0, whiteTimeUsed - incrementMs);
+                            }
+                        }
+                        
+
+                    }
+                    
+                    lastTimestamp = currentTimestamp;
+                }
+                
+                // Determine current player
+                const currentPlayer = (currentMoveCount % 2 === 0) ? 'black' : 'white';
+                
+                return {
+                    blackTime: blackTimeUsed,
+                    whiteTime: whiteTimeUsed,
+                    currentPlayer: currentPlayer,
+                    lastMoveTime: lastTimestamp
+                };
+            }
+
+            parseReviewMovesFromString(moveString) {
+                // Simple helper to parse move count from string (reuse existing logic)
+                if (!moveString || moveString.trim() === "") {
+                    return [];
+                }
+                
+                const coordinates = "abcdefghijklmnopqrs";
+                const moves = [];
+                let i = 0;
+                let moveNumber = 1;
+                
+                while (i < moveString.length) {
+                    let move = null;
+                    
+                    if (i + 1 < moveString.length) {
+                        const twoChar = moveString.substring(i, i + 2);
+                        
+                        if (twoChar === "..") {
+                            move = { moveNumber: moveNumber };
+                            i += 2;
+                        } else if (twoChar === "!1" || twoChar === "!2") {
+                            if (i + 3 < moveString.length) {
+                                move = { moveNumber: moveNumber };
+                                i += 4;
+                            } else {
+                                i += 2;
+                            }
+                        } else {
+                            const x_num = coordinates.indexOf(twoChar[0]);
+                            const y_num = coordinates.indexOf(twoChar[1]);
+                            
+                            if (x_num !== -1 && y_num !== -1) {
+                                move = { moveNumber: moveNumber };
+                            }
+                            i += 2;
+                        }
+                    } else {
+                        i++;
+                    }
+                    
+                    if (move) {
+                        moves.push(move);
+                        moveNumber++;
+                    }
+                }
+                
+                return moves;
+            }
+
+            startReviewCountdown() {
+                // Clear existing countdown
+                if (this.reviewCountdownInterval) {
+                    clearInterval(this.reviewCountdownInterval);
+                }
+                
+                // Start new countdown that updates every second
+                this.reviewCountdownInterval = setInterval(() => {
+                    this.updateReviewClockDisplay();
+                }, 1000);
+                
+                // Update display immediately
+                this.updateReviewClockDisplay();
+                
+
+            }
+
+            stopReviewCountdown() {
+                if (this.reviewCountdownInterval) {
+                    clearInterval(this.reviewCountdownInterval);
+                    this.reviewCountdownInterval = null;
+                    console.log('[UI] Review countdown stopped');
+                }
+            }
+
+            updateReviewClockDisplay() {
+                if (!this.isReviewMode) {
+                    return;
+                }
+                
+                const mainTimeMs = this.reviewTimeControlInfo.mainTime * 1000;
+                const periodTimeMs = this.reviewTimeControlInfo.periodTime * 1000;
+                const periodCount = this.reviewTimeControlInfo.periodCount;
+                const incrementMs = this.reviewTimeControlInfo.increment * 1000;
+                const isFischer = this.reviewTimeControlInfo.type === 'fis';
+                
+                let blackRemainingTime = this.reviewBlackRemainingTime;
+                let whiteRemainingTime = this.reviewWhiteRemainingTime;
+                
+                // Subtract live countdown time for current player (but never go below zero)
+                if (this.reviewLastMoveTime) {
+                    const currentTime = Date.now();
+                    const timeSinceLastMove = currentTime - this.reviewLastMoveTime;
+                    
+                    if (this.reviewCurrentPlayer === 'black') {
+                        blackRemainingTime = Math.max(0, blackRemainingTime - timeSinceLastMove);
+                    } else {
+                        whiteRemainingTime = Math.max(0, whiteRemainingTime - timeSinceLastMove);
+                    }
+                }
+                
+                // Calculate display time for each player based on time control type
+                const blackDisplayTime = this.calculateDisplayTime(blackRemainingTime, mainTimeMs, periodTimeMs, periodCount, isFischer, this.reviewBlackPeriodsRemaining, this.reviewBlackStonesRemaining);
+                const whiteDisplayTime = this.calculateDisplayTime(whiteRemainingTime, mainTimeMs, periodTimeMs, periodCount, isFischer, this.reviewWhitePeriodsRemaining, this.reviewWhiteStonesRemaining);
+                
+                // Update clock displays
+                this.blackClock.textContent = blackDisplayTime.display;
+                this.whiteClock.textContent = whiteDisplayTime.display;
+                
+                // Highlight current player
+                this.updateTurnIndicator(this.reviewCurrentPlayer);
+            }
+
+            calculateDisplayTime(remainingTime, mainTimeMs, periodTimeMs, periodCount, isFischer, periodsRemaining, stonesRemaining) {
+                // For review mode: Never show negative time, stop at zero
+                const remaining = Math.max(0, remainingTime);
+                
+                if (isFischer) {
+                    // Fischer: Show remaining time, stops at zero
+                    return {
+                        display: this.formatReviewTime(remaining),
+                        inPeriods: false
+                    };
+                } else if (remaining > 0) {
+                    // Still have time remaining
+                    if (remaining >= mainTimeMs) {
+                        // In main time
+                        return {
+                            display: this.formatReviewTime(remaining),
+                            inPeriods: false
+                        };
+                    } else {
+                        // In period time - show periods/stones remaining
+                        if (this.reviewTimeControlInfo?.type === 'byo') {
+                            return {
+                                display: `${this.formatReviewTime(remaining)} (${periodsRemaining})`,
+                                inPeriods: true
+                            };
+                        } else if (this.reviewTimeControlInfo?.type === 'can') {
+                            return {
+                                display: `${this.formatReviewTime(remaining)} [${stonesRemaining}]`,
+                                inPeriods: true
+                            };
+                        } else {
+                            return {
+                                display: this.formatReviewTime(remaining),
+                                inPeriods: false
+                            };
+                        }
+                    }
+                } else {
+                    // Time expired
+                    if (this.reviewTimeControlInfo?.type === 'byo') {
+                        // Byo-yomi: Show periods remaining
+                        if (periodsRemaining > 0) {
+                            return {
+                                display: `${this.formatReviewTime(periodTimeMs)} (${periodsRemaining})`,
+                                inPeriods: true
+                            };
+                        } else {
+                            return {
+                                display: "00:00",
+                                inPeriods: false
+                            };
+                        }
+                    } else if (this.reviewTimeControlInfo?.type === 'can') {
+                        // Canadian: Show stones remaining
+                        if (stonesRemaining > 0) {
+                            return {
+                                display: `00:10 [${stonesRemaining}]`, // 10s safety net
+                                inPeriods: true
+                            };
+                        } else {
+                            return {
+                                display: `${this.formatReviewTime(periodTimeMs)} [${this.reviewTimeControlInfo.periodCount}]`,
+                                inPeriods: true
+                            };
+                        }
+                    } else {
+                        // No periods available - stay at zero
+                        return {
+                            display: "00:00",
+                            inPeriods: false
+                        };
+                    }
+                }
+            }
+
+
+
+            formatReviewTime(timeMs) {
+                const totalSeconds = Math.floor(timeMs / 1000);
+                const minutes = Math.floor(totalSeconds / 60);
+                const seconds = totalSeconds % 60;
+                
+                return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            }
+
+            updateReviewClockVisibility() {
+                console.log('[UI] updateReviewClockVisibility called - isReviewMode:', this.isReviewMode, 'reviewTimeControl:', this.reviewTimeControl);
+                if (this.isReviewMode) {
+                    // In review mode, only show clocks if ALL time control parameters are present
+                    // Hide clock if ANY parameter is null (except pd vs in - one must be present)
+                    const hasAllParams = this.reviewTimeControl && this.reviewMainTime && (this.reviewPeriod || this.reviewIncrement);
+                    
+                    if (hasAllParams) {
+                        this.blackClock.style.display = 'block';
+                        this.whiteClock.style.display = 'block';
+                        console.log('[UI] Review clocks shown - all params present');
+                    } else {
+                        this.blackClock.style.display = 'none';
+                        this.whiteClock.style.display = 'none';
+                        console.log('[UI] Review clocks hidden - missing params:', {
+                            tc: this.reviewTimeControl,
+                            mt: this.reviewMainTime,
+                            pd: this.reviewPeriod,
+                            in: this.reviewIncrement
+                        });
+                        // Stop countdown if incomplete time control
+                        this.stopReviewCountdown();
+                    }
+                } else {
+                    // Show clocks normally for live games
+                    this.blackClock.style.display = 'block';
+                    this.whiteClock.style.display = 'block';
+                    console.log('[UI] Live game clocks shown');
+                    // Stop review countdown when switching to live game
+                    this.stopReviewCountdown();
+                }
+            }
+
             updateUI(gameState) {
                 // Update player names
                 if (gameState.players) {
@@ -1103,20 +1661,31 @@
                 
                 // Ensure turn indicator is updated even if game status doesn't change
                 this.updateTurnIndicator(gameState.currentPlayer);
+                
+                // Handle review mode clock display
+                this.updateReviewClockVisibility();
             }
 
             updateClock(clockData) {
-                if (clockData && clockData.black) {
-                    this.blackClock.textContent = this.formatTime(clockData.black);
-                }
-                if (clockData && clockData.white) {
-                    this.whiteClock.textContent = this.formatTime(clockData.white);
+                // Only update live game clocks if not in review mode
+                if (!this.isReviewMode) {
+                    if (clockData && clockData.black) {
+                        this.blackClock.textContent = this.formatTime(clockData.black);
+                    }
+                    if (clockData && clockData.white) {
+                        this.whiteClock.textContent = this.formatTime(clockData.white);
+                    }
                 }
             }
 
             updateBoard(moves, boardState = null) {
                 console.log('[UI] updateBoard called with boardState:', boardState ? 'YES' : 'NO');
                 console.log('[UI] Moves length:', moves ? moves.length : 0);
+                
+                // Update review timer if in review mode
+                if (this.isReviewMode && moves && moves.length > 0) {
+                    this.updateReviewTimer(moves);
+                }
                 
                 // Clear existing stones FIRST
                 this.boardRenderer.clearAllStones();
@@ -1682,6 +2251,13 @@
         document.addEventListener('DOMContentLoaded', () => {
             window.uiManager = new UIManager();
             console.log('[UI] UIManager initialized and ready to receive updates');
+        });
+
+        // Cleanup when page is unloaded
+        window.addEventListener('beforeunload', () => {
+            if (window.uiManager) {
+                window.uiManager.stopReviewCountdown();
+            }
         });
 
         // Global helper function to check if game is finished (for external analysis systems)
