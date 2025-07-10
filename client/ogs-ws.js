@@ -35,7 +35,7 @@ class BoardStateController {
     
     // Initialize board from move list
     initializeFromMoves(moves) {
-        this.resetBoard();
+        // Note: Do not reset board here - handicap stones may have been placed
         
         if (!moves || moves.length === 0) {
             return;
@@ -60,6 +60,60 @@ class BoardStateController {
         // Only log final summary, not every step
         // console.log(`[BoardController] Replayed ${moves.length} moves with ${captureEvents} capture events`);
         // console.log(`[BoardController] Final captures: Black=${this.captures.black}, White=${this.captures.white}`);
+    }
+    
+    // Place handicap stones from OGS initial_state format
+    placeHandicapStones(initialState) {
+        const letters = "abcdefghjklmnopqrst";
+        console.log(`[BoardController] placeHandicapStones called with:`, initialState);
+        
+        // Place black handicap stones
+        if (initialState.black) {
+            console.log(`[BoardController] Parsing black stones from: "${initialState.black}"`);
+            const blackStones = this.parseInitialStateString(initialState.black);
+            console.log(`[BoardController] Parsed black stones:`, blackStones);
+            blackStones.forEach(coords => {
+                console.log(`[BoardController] Placing black stone at [${coords.x}, ${coords.y}]`);
+                this.board[coords.x][coords.y] = 1; // 1 = black stone
+            });
+            console.log(`[BoardController] Placed ${blackStones.length} black handicap stones`);
+        }
+        
+        // Place white handicap stones (rare, but possible)
+        if (initialState.white) {
+            console.log(`[BoardController] Parsing white stones from: "${initialState.white}"`);
+            const whiteStones = this.parseInitialStateString(initialState.white);
+            console.log(`[BoardController] Parsed white stones:`, whiteStones);
+            whiteStones.forEach(coords => {
+                console.log(`[BoardController] Placing white stone at [${coords.x}, ${coords.y}]`);
+                this.board[coords.x][coords.y] = 2; // 2 = white stone
+            });
+            console.log(`[BoardController] Placed ${whiteStones.length} white handicap stones`);
+        }
+    }
+    
+    // Parse OGS initial_state string format to coordinate arrays
+    parseInitialStateString(stateString) {
+        const coordinates = [];
+        const letters = "abcdefghijklmnopqrs";
+        
+        console.log(`[BoardController] parseInitialStateString input: "${stateString}"`);
+        for (let i = 0; i < stateString.length; i += 2) {
+            if (i + 1 < stateString.length) {
+                const char1 = stateString[i];
+                const char2 = stateString[i + 1];
+                const x_index = letters.indexOf(char1);
+                const y_index = letters.indexOf(char2);
+                if (x_index !== -1 && y_index !== -1) {
+                    coordinates.push({ x: x_index, y: y_index });
+                    const x_letter = letters[x_index];
+                    const y_number = 19 - y_index;
+                    console.log(`[BoardController] Handicap stone at [${x_index}, ${y_index}] = ${x_letter}${y_number} from "${char1}${char2}"`);
+                }
+            }
+        }
+        console.log(`[BoardController] Parsed ${coordinates.length} handicap stone positions`);
+        return coordinates;
     }
     
     // Play a move on the board
@@ -493,9 +547,61 @@ class AIAnalysisManager {
     
     // Get initial stones (handicap stones)
     getInitialStones(gameState) {
-        // For now, return empty array
-        // TODO: Add support for handicap stones if needed
-        return [];
+        const initialStones = [];
+        
+        console.log(`[AIAnalysis] getInitialStones called with gameState:`, gameState);
+        console.log(`[AIAnalysis] gameState.initialState:`, gameState.initialState);
+        
+        if (gameState.initialState) {
+            // Parse black handicap stones
+            if (gameState.initialState.black) {
+                console.log(`[AIAnalysis] Parsing black handicap stones from: "${gameState.initialState.black}"`);
+                const blackStones = this.parseInitialState(gameState.initialState.black);
+                console.log(`[AIAnalysis] Parsed black stones:`, blackStones);
+                blackStones.forEach(stone => {
+                    initialStones.push(["black", stone]);
+                });
+            }
+            
+            // Parse white handicap stones (rare, but possible)
+            if (gameState.initialState.white) {
+                console.log(`[AIAnalysis] Parsing white handicap stones from: "${gameState.initialState.white}"`);
+                const whiteStones = this.parseInitialState(gameState.initialState.white);
+                console.log(`[AIAnalysis] Parsed white stones:`, whiteStones);
+                whiteStones.forEach(stone => {
+                    initialStones.push(["white", stone]);
+                });
+            }
+        } else {
+            console.log(`[AIAnalysis] No initialState found in gameState`);
+        }
+        
+        console.log(`[AIAnalysis] Returning ${initialStones.length} initial stones:`, initialStones);
+        return initialStones;
+    }
+    
+    // Parse initial state string format to coordinates
+    parseInitialState(stateString) {
+        const coordinates = [];
+        const letters = "abcdefghijklmnopqrs";
+        console.log(`[AIAnalysis] parseInitialState input: "${stateString}"`);
+        for (let i = 0; i < stateString.length; i += 2) {
+            if (i + 1 < stateString.length) {
+                const char1 = stateString[i];
+                const char2 = stateString[i + 1];
+                const x_index = letters.indexOf(char1);
+                const y_index = letters.indexOf(char2);
+                if (x_index !== -1 && y_index !== -1) {
+                    const x_letter = letters[x_index];
+                    const y_number = 19 - y_index;
+                    const coord = `${x_letter}${y_number}`;
+                    coordinates.push(coord);
+                    console.log(`[AIAnalysis] Parsed "${char1}${char2}" -> [${x_index},${y_index}] -> ${coord}`);
+                }
+            }
+        }
+        console.log(`[AIAnalysis] Final coordinates:`, coordinates);
+        return coordinates;
     }
     
     // Get game rules
@@ -788,6 +894,10 @@ class GameEngineWrapper {
         // Game data event
         this.ogsSocket.on(`game/${this.id}/gamedata`, (data) => {
             console.log(`[GameEngine] Game data received:`, data);
+            
+            // Store raw game data for inspection
+            window.lastGameData = data;
+            
             this.initializeGame(data);
             this.callEventHandler('gamedata', this.currentGame);
             
@@ -907,12 +1017,22 @@ class GameEngineWrapper {
     }
     
     // Parse game moves from OGS format to readable format
-    parseGameMoves(moves) {
+    parseGameMoves(moves, initialPlayer = "black") {
         const letters = "abcdefghjklmnopqrst";
         const parsedMoves = [];
         
+        // Determine starting color based on initial player
+        const startingColor = initialPlayer === "white" ? "white" : "black";
+        console.log(`[GameEngine] parseGameMoves: initialPlayer=${initialPlayer}, startingColor=${startingColor}, moves.length=${moves.length}`);
+        
         moves.forEach((move, index) => {
-            const color = index % 2 === 0 ? "black" : "white";
+            // For handicap games where white plays first, colors are swapped
+            let color;
+            if (startingColor === "white") {
+                color = index % 2 === 0 ? "white" : "black";
+            } else {
+                color = index % 2 === 0 ? "black" : "white";
+            }
             
             if (move[0] === -1 && move[1] === -1) {
                 parsedMoves.push({
@@ -930,6 +1050,11 @@ class GameEngineWrapper {
                     coordinates: [move[0], move[1]],
                     moveNumber: index + 1
                 });
+            }
+            
+            // Debug first few moves only
+            if (index < 5) {
+                console.log(`[GameEngine] Move ${index + 1}: ${color} plays ${parsedMoves[index].move}`);
             }
         });
         
@@ -1063,12 +1188,40 @@ class GameEngineWrapper {
     
     // Initialize game data
     initializeGame(gameData) {
-        const parsedMoves = this.parseGameMoves(gameData.moves);
+        // Simple alert to confirm function is called
+        console.log(`[GameEngine] === INITIALIZE GAME CALLED ===`);
+        console.log(`[GameEngine] Game ID: ${gameData.game_id}`);
+        console.log(`[GameEngine] Game name: ${gameData.game_name}`);
+        console.log(`[GameEngine] Handicap: ${gameData.handicap}`);
+        console.log(`[GameEngine] Initial player: ${gameData.initial_player}`);
+        console.log(`[GameEngine] Initial state:`, gameData.initial_state);
+        
+        // Force a visible log to confirm execution
+        if (gameData.handicap > 0) {
+            console.warn(`[GameEngine] HANDICAP GAME DETECTED: ${gameData.handicap} stones`);
+        }
+        
+        // Get initial player (important for handicap games)
+        const initialPlayer = gameData.initial_player || "black";
+        console.log(`[GameEngine] Initial player extracted: ${initialPlayer}`);
+        console.log(`[GameEngine] Handicap info: handicap=${gameData.handicap}, initial_state=`, gameData.initial_state);
+        
+        const parsedMoves = this.parseGameMoves(gameData.moves, initialPlayer);
         
         // Parse clock data properly
         let clockData = null;
         if (gameData.clock) {
             clockData = this.parsePlayerClock(gameData.clock);
+        }
+        
+        // Calculate current player based on initial player and moves count
+        let currentPlayer;
+        if (initialPlayer === "white") {
+            // In handicap games where white plays first
+            currentPlayer = parsedMoves.length % 2 === 0 ? "white" : "black";
+        } else {
+            // Normal games where black plays first
+            currentPlayer = parsedMoves.length % 2 === 0 ? "black" : "white";
         }
         
         this.currentGame = {
@@ -1089,14 +1242,46 @@ class GameEngineWrapper {
                 }
             },
             clock: clockData,
-            currentPlayer: parsedMoves.length % 2 === 0 ? "black" : "white",
+            currentPlayer: currentPlayer,
             finished: gameData.phase === "finished",
-            captures: this.boardController.captures
+            captures: this.boardController.captures,
+            // Store handicap information
+            handicap: gameData.handicap || 0,
+            initialPlayer: initialPlayer,
+            initialState: gameData.initial_state || null
         };
         
         console.log(`[GameEngine] Game ${this.id} initialized:`, this.currentGame);
         
-        // Initialize board state from existing moves
+        // Log handicap information
+        if (this.currentGame.handicap > 0) {
+            console.log(`[GameEngine] Handicap game: ${this.currentGame.handicap} stones, ${this.currentGame.initialPlayer} plays first`);
+        }
+        
+        // Debug: Check if initial_state was processed
+        console.log(`[GameEngine] Initial state in currentGame:`, this.currentGame.initialState);
+        
+        // Initialize board state with handicap stones first, then moves
+        this.boardController.resetBoard();
+        
+        // Place handicap stones if any
+        console.log(`[GameEngine] gameData.initial_state:`, gameData.initial_state);
+        console.log(`[GameEngine] gameData keys:`, Object.keys(gameData));
+        
+        if (gameData.initial_state) {
+            console.log(`[GameEngine] Calling placeHandicapStones...`);
+            this.boardController.placeHandicapStones(gameData.initial_state);
+        } else {
+            console.log(`[GameEngine] No initial_state found - no handicap stones to place`);
+            // Check if it might be under a different key
+            if (gameData.initialState) {
+                console.log(`[GameEngine] Found initialState instead:`, gameData.initialState);
+                this.boardController.placeHandicapStones(gameData.initialState);
+            }
+        }
+        
+        // Then replay moves
+        console.log(`[GameEngine] Starting to replay ${parsedMoves.length} moves...`);
         this.boardController.initializeFromMoves(parsedMoves);
         
         // Start clock if available
@@ -1200,6 +1385,8 @@ class GameEngineWrapper {
         const parsedMove = this.parseSingleMove(moveData.move, currentColor, moveNumber);
         
         this.currentGame.moves.push(parsedMove);
+        
+        // Update current player - always alternates regardless of handicap
         this.currentGame.currentPlayer = currentColor === "black" ? "white" : "black";
         
         // Update board state with new move
@@ -1849,3 +2036,308 @@ Examples:
 
 console.log(`[AI] 🤖 AI Analysis ready! Default server: ${window.AIHostname}:${window.AIPort}`);
 console.log(`[AI] 💡 Type showAIHelp() for usage instructions`);
+
+// Test function for handicap stone parsing
+window.testHandicapParsing = () => {
+    console.log('=== Testing Handicap Stone Parsing ===');
+    
+    // Test the initial_state parsing with example data
+    const testState = { black: "pppddp", white: "" };
+    
+    if (GameEngine && GameEngine.boardController) {
+        console.log('Testing with example state:', testState);
+        const result = GameEngine.boardController.parseInitialStateString(testState.black);
+        console.log('Parsed coordinates:', result);
+        
+        // Expected: "pp"=[15,15], "pd"=[15,3], "dp"=[3,15]
+        const expected = [
+            { x: 15, y: 15 }, // pp
+            { x: 15, y: 3 },  // pd  
+            { x: 3, y: 15 }   // dp
+        ];
+        
+        console.log('Expected coordinates:', expected);
+        
+        if (JSON.stringify(result) === JSON.stringify(expected)) {
+            console.log('✅ Handicap parsing test PASSED');
+        } else {
+            console.log('❌ Handicap parsing test FAILED');
+        }
+    } else {
+        console.log('GameEngine not available for testing');
+    }
+};
+
+console.log(`[Test] 💡 Type testHandicapParsing() to test handicap stone parsing`);
+
+// Function to check current game state for handicap info
+window.checkHandicapInfo = () => {
+    console.log('=== Checking Current Game Handicap Info ===');
+    
+    if (GameEngine && GameEngine.currentGame) {
+        console.log('Current game:', GameEngine.currentGame);
+        console.log('Handicap:', GameEngine.currentGame.handicap);
+        console.log('Initial player:', GameEngine.currentGame.initialPlayer);
+        console.log('Initial state:', GameEngine.currentGame.initialState);
+        
+        if (GameEngine.boardController) {
+            console.log('Board state after initialization:');
+            console.log(GameEngine.boardController.getBoardString());
+        }
+    } else {
+        console.log('No active game found');
+    }
+};
+
+console.log(`[Test] 💡 Type checkHandicapInfo() to check current game handicap info`);
+
+// Function to manually test handicap stone placement
+window.testHandicapPlacement = () => {
+    console.log('=== Testing Handicap Stone Placement ===');
+    
+    if (GameEngine && GameEngine.boardController) {
+        // Test with the example data from earlier
+        const testInitialState = { black: "pppddp", white: "" };
+        console.log('Testing with:', testInitialState);
+        
+        // Reset board
+        GameEngine.boardController.resetBoard();
+        console.log('Board reset');
+        
+        // Place handicap stones
+        GameEngine.boardController.placeHandicapStones(testInitialState);
+        console.log('Handicap stones placed');
+        
+        // Show board state
+        console.log('Board after handicap placement:');
+        console.log(GameEngine.boardController.getBoardString());
+        
+        // Count stones
+        const boardState = GameEngine.boardController.getBoardState();
+        const blackStones = boardState.flat().filter(cell => cell === 1).length;
+        const whiteStones = boardState.flat().filter(cell => cell === 2).length;
+        console.log(`Black stones: ${blackStones}, White stones: ${whiteStones}`);
+    } else {
+        console.log('GameEngine not available');
+    }
+};
+
+console.log(`[Test] 💡 Type testHandicapPlacement() to test handicap stone placement`);
+
+// Function to inspect raw game data for handicap info
+window.inspectGameData = () => {
+    console.log('=== Inspecting Raw Game Data ===');
+    
+    // Try to get the raw game data from the last received event
+    if (window.lastGameData) {
+        console.log('Last received game data:', window.lastGameData);
+        console.log('Handicap:', window.lastGameData.handicap);
+        console.log('Initial player:', window.lastGameData.initial_player);
+        console.log('Initial state:', window.lastGameData.initial_state);
+    } else {
+        console.log('No raw game data available');
+        
+        // Try to get from GameEngine
+        if (GameEngine && GameEngine.currentGame) {
+            console.log('Current game data:', GameEngine.currentGame);
+        }
+    }
+};
+
+console.log(`[Test] 💡 Type inspectGameData() to inspect raw game data`);
+
+// Function to check if current game is a handicap game
+window.isHandicapGame = () => {
+    console.log('=== Checking if Current Game is Handicap ===');
+    
+    if (window.lastGameData) {
+        const handicap = window.lastGameData.handicap || 0;
+        const initialState = window.lastGameData.initial_state;
+        
+        console.log(`Handicap: ${handicap}`);
+        console.log(`Initial state:`, initialState);
+        
+        if (handicap > 0) {
+            console.log(`✅ This IS a handicap game with ${handicap} stones`);
+            console.log(`Initial player: ${window.lastGameData.initial_player}`);
+            
+            if (initialState && (initialState.black || initialState.white)) {
+                console.log(`✅ Has initial stones:`, initialState);
+            } else {
+                console.log(`❌ No initial stones found`);
+            }
+        } else {
+            console.log(`❌ This is NOT a handicap game (handicap = 0)`);
+        }
+    } else {
+        console.log('No game data available');
+    }
+};
+
+console.log(`[Test] 💡 Type isHandicapGame() to check if current game is handicap`);
+
+// Function to test handicap parsing with example data
+window.testHandicapExample = () => {
+    console.log('=== Testing Handicap with Example Data ===');
+    
+    // Example data from the earlier game
+    const exampleGameData = {
+        handicap: 3,
+        initial_player: "white",
+        initial_state: { black: "pppddp", white: "" }
+    };
+    
+    console.log('Example game data:', exampleGameData);
+    
+    // Test the parsing
+    if (GameEngine && GameEngine.boardController) {
+        console.log('Testing handicap stone placement...');
+        
+        // Reset board
+        GameEngine.boardController.resetBoard();
+        
+        // Place handicap stones
+        GameEngine.boardController.placeHandicapStones(exampleGameData.initial_state);
+        
+        // Show results
+        console.log('Board after handicap placement:');
+        console.log(GameEngine.boardController.getBoardString());
+        
+        // Count stones
+        const boardState = GameEngine.boardController.getBoardState();
+        const blackStones = boardState.flat().filter(cell => cell === 1).length;
+        const whiteStones = boardState.flat().filter(cell => cell === 2).length;
+        console.log(`Black stones: ${blackStones}, White stones: ${whiteStones}`);
+        
+        if (blackStones === 3) {
+            console.log('✅ Handicap stone placement test PASSED');
+        } else {
+            console.log('❌ Handicap stone placement test FAILED');
+        }
+    } else {
+        console.log('GameEngine not available');
+    }
+};
+
+console.log(`[Test] 💡 Type testHandicapExample() to test with example handicap data`);
+
+// Function to test coordinate parsing specifically
+window.testCoordinateParsing = () => {
+    console.log('=== Testing Coordinate Parsing ===');
+    
+    // Test the 2-stone handicap example
+    const testString = "pddp";
+    console.log(`Testing string: "${testString}"`);
+    
+    if (GameEngine && GameEngine.boardController) {
+        const result = GameEngine.boardController.parseInitialStateString(testString);
+        console.log('Parsed coordinates:', result);
+        
+        // Expected: "pd" = Q16, "dp" = D4
+        const expected = [
+            { x: 15, y: 3 },  // pd -> Q16
+            { x: 3, y: 15 }   // dp -> D4
+        ];
+        
+        console.log('Expected coordinates:', expected);
+        
+        if (JSON.stringify(result) === JSON.stringify(expected)) {
+            console.log('✅ Coordinate parsing test PASSED');
+        } else {
+            console.log('❌ Coordinate parsing test FAILED');
+        }
+    } else {
+        console.log('GameEngine not available');
+    }
+};
+
+console.log(`[Test] 💡 Type testCoordinateParsing() to test coordinate parsing`);
+
+// Function to debug coordinate mapping
+window.debugCoordinateMapping = () => {
+    console.log('=== Debugging Coordinate Mapping ===');
+    
+    const letters = "abcdefghjklmnopqrst";
+    console.log('Letter mapping:', letters);
+    
+    // Test specific coordinates
+    const testCoords = [
+        { char: 'p', expected: 'Q16', x: 15, y: 3 },
+        { char: 'd', expected: 'D4', x: 3, y: 15 }
+    ];
+    
+    testCoords.forEach(coord => {
+        const index = letters.indexOf(coord.char);
+        const letter = letters[index];
+        const number = 19 - coord.y;
+        const result = `${letter}${number}`;
+        
+        console.log(`${coord.char} -> index ${index} -> ${result} (expected ${coord.expected})`);
+        console.log(`  Expected: [${coord.x}, ${coord.y}] -> ${coord.expected}`);
+        console.log(`  Actual:   [${index}, ${coord.y}] -> ${result}`);
+    });
+    
+    // Check if the issue is with the letter mapping
+    console.log('Checking letter positions:');
+    console.log('p position:', letters.indexOf('p'), '(should be 15 for Q16)');
+    console.log('q position:', letters.indexOf('q'), '(should be 16 for R16)');
+    console.log('d position:', letters.indexOf('d'), '(should be 3 for D4)');
+};
+
+console.log(`[Test] 💡 Type debugCoordinateMapping() to debug coordinate mapping`);
+
+// Function to test actual coordinate mapping for hoshi positions
+window.testHoshiPositions = () => {
+    console.log('=== Testing Hoshi Positions for Handicap Stones ===');
+    
+    const letters = "abcdefghjklmnopqrst";
+    
+    // Standard hoshi positions on 19x19 board
+    const hoshiPositions = [
+        { name: "4-4", x: 3, y: 3, expected: "D16" },
+        { name: "4-16", x: 3, y: 15, expected: "D4" },
+        { name: "10-10", x: 9, y: 9, expected: "J10" },
+        { name: "16-4", x: 15, y: 3, expected: "P16" },
+        { name: "16-16", x: 15, y: 15, expected: "P4" }
+    ];
+    
+    console.log('Testing hoshi positions:');
+    hoshiPositions.forEach(pos => {
+        const x_letter = letters[pos.x];
+        const y_number = 19 - pos.y;
+        const result = `${x_letter}${y_number}`;
+        console.log(`${pos.name}: [${pos.x}, ${pos.y}] -> ${result} (expected ${pos.expected})`);
+    });
+    
+    // Test the actual handicap string "pddp"
+    console.log('\nTesting actual handicap string "pddp":');
+    const testString = "pddp";
+    for (let i = 0; i < testString.length; i += 2) {
+        if (i + 1 < testString.length) {
+            const char1 = testString[i];
+            const char2 = testString[i + 1];
+            const x_index = letters.indexOf(char1);
+            const y_index = letters.indexOf(char2);
+            const x_letter = letters[x_index];
+            const y_number = 19 - y_index;
+            const result = `${x_letter}${y_number}`;
+            console.log(`"${char1}${char2}" -> [${x_index}, ${y_index}] -> ${result}`);
+        }
+    }
+    
+    // Check what the correct 2-stone handicap positions should be
+    console.log('\nExpected 2-stone handicap positions:');
+    console.log('- Q16 (16th line from left, 4th line from top)');
+    console.log('- D4 (4th line from left, 16th line from top)');
+    
+    // Calculate what coordinates these should be
+    const q16_x = letters.indexOf('q'); // should be 15
+    const q16_y = 3; // 4th line from top = index 3
+    const d4_x = letters.indexOf('d'); // should be 3
+    const d4_y = 15; // 16th line from top = index 15
+    
+    console.log(`Q16 should be: [${q16_x}, ${q16_y}] -> q${19-q16_y}`);
+    console.log(`D4 should be: [${d4_x}, ${d4_y}] -> d${19-d4_y}`);
+};
+
+console.log(`[Test] 💡 Type testHoshiPositions() to test hoshi positions`);
