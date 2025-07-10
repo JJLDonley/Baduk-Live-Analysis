@@ -60,7 +60,6 @@ http://localhost:8080/review/123456    # Review/demo board
 Review games support additional URL parameters for enhanced functionality:
 
 ### **Required Parameters**
-- `t=1` - Enable timer mode (required for clock display)
 - `tc=<type>` - Time control type
 - `mt=<time>` - Main time
 
@@ -74,7 +73,9 @@ Review games support additional URL parameters for enhanced functionality:
 - `in=<time>s` - Increment time (required for Fischer)
 
 ### **Optional Parameters**
-- `c=<color>` - Color preference (black/white)
+- `t=1` - Change the pattern move display to between Player info and Board
+- `c=<color>` - Color preference (black/white/quality)
+- `c=quality` - This make it so it matches same color as the move quality
 
 ### **Examples**
 
