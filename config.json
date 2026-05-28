@@ -3,9 +3,9 @@
   "host": "0.0.0.0",
   "katago": {
     "directory": "./server/katago",
-    "executable": "katago.exe",
+    "executable": "katago",
     "model": "weights.bin.gz",
-    "config": "default.cfg"
+    "config": "analysis_example.cfg"
   },
   "analysis": {
     "maxVisits": 10,
