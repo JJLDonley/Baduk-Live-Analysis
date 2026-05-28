@@ -1,6 +1,7 @@
 # Baduk Live Analysis Server
 
-A WebSocket-based AI analysis server that uses KataGo to provide real-time Go/Baduk game analysis.
+A WebSocket-based AI analysis server that uses KataGo to provide real-time
+Go/Baduk game analysis.
 
 ## Features
 
@@ -23,7 +24,8 @@ A WebSocket-based AI analysis server that uses KataGo to provide real-time Go/Ba
 
 ## Configuration
 
-The server uses a configuration file (`config.json`) that is automatically created with default values on first run.
+The server uses a configuration file (`config.json`) that is automatically
+created with default values on first run.
 
 ### Default Configuration
 
@@ -53,23 +55,28 @@ The server uses a configuration file (`config.json`) that is automatically creat
 ### Configuration Options
 
 #### Server Settings
+
 - `port`: WebSocket server port (default: 8081)
 - `host`: Server hostname (default: localhost)
 
 #### KataGo Settings
+
 - `katago.directory`: Path to KataGo installation directory
 - `katago.executable`: KataGo executable filename
 - `katago.model`: Model file name (e.g., `default_model.bin.gz`)
 - `katago.config`: Config file name (e.g., `default.cfg`)
 
 #### Analysis Settings
+
 - `analysis.maxVisits`: Maximum visits per analysis (default: 100)
 - `analysis.maxConcurrentAnalyses`: Maximum concurrent analyses (default: 3)
 - `analysis.timeoutMs`: Analysis timeout in milliseconds (default: 30000)
 - `analysis.includePolicy`: Include policy data in analysis (default: false)
-- `analysis.includeOwnership`: Include ownership data in analysis (default: true)
+- `analysis.includeOwnership`: Include ownership data in analysis (default:
+  true)
 
 #### Logging Settings
+
 - `logging.level`: Log level (debug, info, warn, error)
 - `logging.logFile`: Optional log file path
 
@@ -132,8 +139,9 @@ deno run --allow-all server/server.ts --log-level debug --log-file analysis.log
 ### Connection
 
 Connect to the WebSocket server:
+
 ```javascript
-const ws = new WebSocket('ws://localhost:8081');
+const ws = new WebSocket("ws://localhost:8081");
 ```
 
 ### Analysis Request Format
@@ -188,7 +196,7 @@ The server automatically integrates with the client-side AI analysis manager:
 
 ```javascript
 // Connect to AI server
-connectToAI('localhost', 8081);
+connectToAI("localhost", 8081);
 
 // Request analysis for current game
 requestAnalysis();
@@ -232,7 +240,8 @@ deno run --allow-all server/server.ts --log-level debug
 
 ### Configuration Validation
 
-The server automatically validates configuration on startup and will report any errors:
+The server automatically validates configuration on startup and will report any
+errors:
 
 ```
 [Config] Configuration validation failed:
@@ -247,16 +256,19 @@ The server automatically validates configuration on startup and will report any 
 For different use cases:
 
 **Light Usage (1-2 concurrent analyses)**
+
 ```bash
 deno run --allow-all server/server.ts --max-visits 50 --max-concurrent 2
 ```
 
 **Heavy Usage (Multiple concurrent games)**
+
 ```bash
 deno run --allow-all server/server.ts --max-visits 200 --max-concurrent 5 --timeout 60000
 ```
 
 **Production Server**
+
 ```bash
 deno run --allow-all server/server.ts --host 0.0.0.0 --port 8080 --max-visits 100 --max-concurrent 3
 ```
@@ -277,4 +289,4 @@ deno run --allow-all server/server.ts --host 0.0.0.0 --port 8080 --max-visits 10
 
 ## License
 
-This project is part of the Baduk Live Analysis application. 
+This project is part of the Baduk Live Analysis application.
