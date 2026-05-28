@@ -1,16 +1,21 @@
 # Baduk Live Analysis
 
-A real-time Go (Baduk) game analysis application that connects to Online-Go.com (OGS) to display live games and reviews with beautiful UI and proper Go board representation.
+A real-time Go (Baduk) game analysis application that connects to Online-Go.com
+(OGS) to display live games and reviews with beautiful UI and proper Go board
+representation.
 
 ## Features
 
 ### ✅ **Core Functionality**
+
 - **Live Game Tracking**: Connect to any OGS game via URL (`/game/[game_id]`)
 - **Review Support**: View OGS reviews and demo boards (`/review/[review_id]`)
-- **Real-time Updates**: Live clock countdown, move updates, and game state changes
+- **Real-time Updates**: Live clock countdown, move updates, and game state
+  changes
 - **Event-driven Architecture**: Responsive UI that updates automatically
 
 ### ✅ **Professional Go Board**
+
 - **Authentic SVG Goban**: Traditional 19x19 board with proper proportions
 - **Star Points (Hoshi)**: Traditional 9-point star pattern
 - **Coordinate System**: A-T horizontal (skipping I), 1-19 vertical numbering
@@ -19,23 +24,29 @@ A real-time Go (Baduk) game analysis application that connects to Online-Go.com 
 - **Responsive Design**: Scales properly on all devices
 
 ### ✅ **Player Information & Clocks**
+
 - **Live Clock Display**: Real-time countdown with multiple time control support
 - **Player Names & Ranks**: Automatic fetching from OGS data
 - **Time Control Systems**: Fischer, Byo-yomi, and Canadian time support
 - **Clock Synchronization**: Accurate time tracking with server sync
 
 ### ✅ **Game Analysis UI**
+
 - **Winrate Pie Chart**: Visual representation of position evaluation
-- **Score Bar**: Territory and capture tracking
-- **Move Quality Indicator**: Color-coded move evaluation system
+- **Confidence Bar**: Territory/confidence distribution chart
+- **Score Display**: Territory and capture tracking
+- **Move Quality Counter**: Per-player blue/green/yellow/red raw move counts, not percentages
+- **Move Quality Index**: Separate from the counter; current UI exposes the count boxes as `Move`/`Index` elements
 - **Game Status**: Current phase and player to move
 
 ## Quick Start
 
 ### Prerequisites
+
 - [Deno](https://deno.land/) runtime installed
 
 ### Installation & Running
+
 ```bash
 # Clone the repository
 git clone <repository-url>
@@ -50,6 +61,7 @@ deno run --allow-net --allow-read server.ts
 ```
 
 ### Example URLs
+
 ```
 http://localhost:8080/game/77081213    # Live game
 http://localhost:8080/review/123456    # Review/demo board
@@ -60,50 +72,89 @@ http://localhost:8080/review/123456    # Review/demo board
 Review games support additional URL parameters for enhanced functionality:
 
 ### **Required Parameters**
+
 - `tc=<type>` - Time control type
 - `mt=<time>` - Main time
 
 ### **Time Control Types**
+
 - `tc=byo` - Byo-yomi (Japanese overtime)
-- `tc=can` - Canadian (stone-based overtime)  
+- `tc=can` - Canadian (stone-based overtime)
 - `tc=fis` - Fischer (increment per move)
 
 ### **Time Control Specific Parameters**
+
 - `pd=<time>s<count>` - Period time and count (required for byo-yomi/Canadian)
 - `in=<time>s` - Increment time (required for Fischer)
 
 ### **Optional Parameters**
+
 - `t=1` - Change the pattern move display to between Player info and Board
 - `c=<color>` - Color preference (black/white/quality)
-- `c=quality` - This make it so it matches same color as the move quality
+- `c=quality` - This makes Shape text match the Move quality color
+- `element=<name>` - Show one UI element model
+- `elements=<a,b,c>` - Show multiple UI element models
+
+### **Element Models**
+
+Use singular, short names. Names are case-insensitive.
+
+| Name | Shows |
+| --- | --- |
+| `Board` | Go board |
+| `Player` | Player names |
+| `Clock` | Player clocks |
+| `Pie` | Winrate pie |
+| `Bar` | Confidence/winrate bar |
+| `Score` | Score/counting panel |
+| `Move` | Move quality counter: actual move counts, not percentages |
+| `Index` | Move Quality Index boxes |
+| `Shape` | Shape/pattern name |
+| `Status` | Game status text |
+
+Legacy aliases like `players`, `winrate`, `move-quality`, and `mqi` are still accepted, but new URLs should use the short singular names above.
+
+### **Element Examples**
+
+```
+http://localhost:8080/game/77081213?element=Board
+http://localhost:8080/game/77081213?elements=Player,Clock,Pie,Move,Index,Board
+http://localhost:8080/review/123456?elements=Shape,Board,Bar,Score
+```
 
 ### **Examples**
 
 #### Fischer Time Control
+
 ```
 http://localhost:8080/review/123456/?t=1&c=white&tc=fis&mt=60m&in=10s
 # 60 minutes main time + 10 seconds increment per move
 ```
 
 #### Byo-yomi Time Control
+
 ```
 http://localhost:8080/review/123456/?t=1&c=black&tc=byo&mt=40m&pd=30sx5
 # 40 minutes main time + 5 periods of 30 seconds each
 ```
 
 #### Canadian Time Control
+
 ```
 http://localhost:8080/review/123456/?t=1&tc=can&mt=10m&pd=10mx15
 # 10 minutes main time + 15 stones per 10-minute period
 ```
 
 ### **Parameter Format**
+
 - **Time formats**: `30s` (seconds), `10m` (minutes), `1h` (hours)
-- **Period format**: `<time><unit>x<count>` (e.g., `30sx5` = 30 seconds × 5 periods)
+- **Period format**: `<time><unit>x<count>` (e.g., `30sx5` = 30 seconds × 5
+  periods)
 - **Colors**: `black`, `white`
 - **Timer**: `t=1` (enabled), `t=0` (disabled)
 
 ### **Clock Display Rules**
+
 - Clocks are only shown when all required parameters are present
 - Fischer requires: `t`, `tc`, `mt`, `in`
 - Byo-yomi/Canadian requires: `t`, `tc`, `mt`, `pd`
@@ -129,18 +180,21 @@ Baduk-Live-Analysis/
 ## Architecture
 
 ### **Server (server.ts)**
+
 - **Deno HTTP Server**: Serves static files and handles routing
 - **Dynamic Routing**: Supports `/game/[id]` and `/review/[id]` patterns
 - **Asset Serving**: Handles images, fonts, and static resources
 - **CORS Headers**: Proper caching and content-type headers
 
 ### **Client Application**
+
 - **OGS-WS Integration**: Real-time WebSocket connection to OGS
 - **Event-driven UI**: Responsive updates based on game events
 - **SVG Board Renderer**: Professional Go board implementation
 - **Game State Management**: Handles moves, clocks, and board state
 
 ### **Key Components**
+
 1. **GameEngineWrapper**: Handles OGS connection and game logic
 2. **BoardRenderer**: Creates and manages the SVG Go board
 3. **UIManager**: Coordinates UI updates and user interactions
@@ -177,11 +231,13 @@ gameEngine.addEventHandler('reviewmove', (moves) => { ... });
 ## Development
 
 ### **Adding New Features**
+
 1. **Server Changes**: Modify `server.ts` for new routes/endpoints
 2. **Client Logic**: Update `client/ogs-ws.js` for game engine features
 3. **UI Updates**: Modify `client/index.html` for visual changes
 
 ### **Debugging**
+
 - **Browser Console**: View connection status and game events
 - **Network Tab**: Monitor WebSocket connections to OGS
 - **Server Logs**: Check terminal output for server-side issues
@@ -189,22 +245,25 @@ gameEngine.addEventHandler('reviewmove', (moves) => { ... });
 ## Troubleshooting
 
 ### **Common Issues**
+
 - **"Game not found"**: Ensure the game ID is correct and public
 - **"No board display"**: Check browser console for JavaScript errors
 - **"Clock not updating"**: Verify WebSocket connection to OGS
 - **"Images not loading"**: Confirm asset files exist in `client/assets/`
 
 ### **OGS Connection**
+
 - The app connects directly to `https://online-go.com` via WebSocket
 - Games must be public or you must have viewing permissions
 - Some private games may not be accessible
 
 ## License
 
-This project is for educational and personal use. Please respect OGS terms of service when using their API.
+This project is for educational and personal use. Please respect OGS terms of
+service when using their API.
 
 ## Credits
 
 - **Online-Go.com**: Game data and WebSocket API
 - **AI Sensei**: Stone image assets (fallback)
-- **Original Web Implementation**: Foundation for board rendering logic 
+- **Original Web Implementation**: Foundation for board rendering logic
