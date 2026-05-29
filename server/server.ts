@@ -411,13 +411,7 @@ class AnalysisServer {
 
   private enqueueMissingMoveAnalyses(request: AnalysisRequest): boolean {
     let queued = false;
-    const frame = this.getQualityFrame(request.context);
-    const startMoveCount = frame?.startMoveCount ?? 0;
-    for (
-      let moveCount = startMoveCount;
-      moveCount < request.moves.length;
-      moveCount++
-    ) {
+    for (let moveCount = 0; moveCount < request.moves.length; moveCount++) {
       const prefixRequest = this.createPrefixAnalysisRequest(
         request,
         moveCount,
@@ -425,7 +419,7 @@ class AnalysisServer {
       const cacheKey = this.getAnalysisCacheKey(prefixRequest);
       const cachedResponse = this.analysisCache.get(cacheKey);
 
-      if (cachedResponse && !frame) {
+      if (cachedResponse) {
         this.recordMoveQualityFromCachedAnalysis(prefixRequest, cachedResponse);
         continue;
       }
