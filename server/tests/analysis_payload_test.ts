@@ -43,6 +43,6 @@ Deno.test("buildAnalysisPayloadFromSnapshot clamps moveNumber", () => {
     10,
   );
 
-  assertEquals(payload.id, "123/game/3");
+  assertEquals(payload.id, "game_123_move_3");
   assertEquals(payload.moves.length, 3);
 });

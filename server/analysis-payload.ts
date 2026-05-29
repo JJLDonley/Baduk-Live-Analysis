@@ -37,7 +37,7 @@ export function buildAnalysisPayloadFromSnapshot(
   return {
     id: typeof payload.id === "string"
       ? payload.id
-      : `${context.id}/${context.type}/${clampedMoveNumber}`,
+      : getMoveQueryId(context, clampedMoveNumber),
     context: context.toJSON(),
     moves: snapshot.moves.slice(0, clampedMoveNumber).map((move) => [
       move.color,
@@ -54,4 +54,10 @@ export function buildAnalysisPayloadFromSnapshot(
       ? Number(payload.maxVisits)
       : defaultMaxVisits,
   };
+}
+
+function getMoveQueryId(context: GameContext, moveNumber: number): string {
+  const safeType = context.type.replace(/[^A-Za-z0-9-]/g, "_");
+  const safeId = context.id.replace(/[^A-Za-z0-9-]/g, "_");
+  return `${safeType}_${safeId}_move_${moveNumber}`;
 }
