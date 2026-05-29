@@ -973,9 +973,12 @@ class AnalysisServer {
 
     const [rawColor, move] = request.moves[request.moves.length - 1];
     const color = rawColor === "white" ? "white" : "black";
+    const previousMoveCount = request.moves.length - 1;
     const previousRequest: AnalysisRequest = {
       ...request,
+      id: this.getMoveQueryId(request.context, previousMoveCount),
       moves: request.moves.slice(0, -1),
+      cacheKey: undefined,
     };
     const previousResponse = this.analysisCache.get(
       this.getAnalysisCacheKey(previousRequest),
