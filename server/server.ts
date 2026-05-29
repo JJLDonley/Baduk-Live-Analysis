@@ -435,10 +435,16 @@ class AnalysisServer {
   ): AnalysisRequest {
     return {
       ...request,
-      id: `${request.id}/backfill/${moveCount}`,
+      id: this.getMoveQueryId(request.context, moveCount),
       moves: request.moves.slice(0, moveCount),
       cacheKey: undefined,
     };
+  }
+
+  private getMoveQueryId(context: GameContext, moveCount: number): string {
+    const safeType = context.type.replace(/[^A-Za-z0-9-]/g, "_");
+    const safeId = context.id.replace(/[^A-Za-z0-9-]/g, "_");
+    return `${safeType}_${safeId}_move_${moveCount}`;
   }
 
   private hasKnownMoveQuality(
@@ -677,7 +683,10 @@ class AnalysisServer {
     }
 
     const cacheKey = request.cacheKey ?? this.getAnalysisCacheKey(request);
-    const isBackfillRequest = request.id.includes("/backfill/");
+    const isBackfillRequest =
+      this.getQualityFrame(request.context)?.targetRequest !== request &&
+      request.moves.length <
+        (this.getQualityFrame(request.context)?.targetMoveCount ?? 0);
 
     // Convert moves to KataGo format
     const katagoQuery = this.convertToKataGoFormat(request);

@@ -625,9 +625,12 @@ class AIAnalysisManager {
       return null;
     }
 
-    // Create unique ID
+    // Create unique ID scoped by game type, game id, and move number.
+    // Example: review_123456_move_1
     const gameId = gameState.id || "unknown";
-    const id = `${gameId}/${gameType}/${moveNumber}`;
+    const safeGameType = String(gameType).replace(/[^A-Za-z0-9-]/g, "_");
+    const safeGameId = String(gameId).replace(/[^A-Za-z0-9-]/g, "_");
+    const id = `${safeGameType}_${safeGameId}_move_${moveNumber}`;
 
     // Convert moves to required format [[color, "letter + number"]]
     const moves = gameState.moves
