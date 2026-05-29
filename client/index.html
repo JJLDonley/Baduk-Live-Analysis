@@ -40,8 +40,9 @@
 
       /* Information Section */
       .information {
-        display: flex;
-        justify-content: space-between;
+        display: grid;
+        grid-template-columns: 1fr 75px 1fr;
+        justify-items: center;
         align-items: center;
         width: 506px;
         background: rgba(255, 255, 255, 0.1);
@@ -56,11 +57,18 @@
         flex-direction: column;
         justify-content: center;
         align-items: flex-start;
-        flex: 1;
+        justify-self: stretch;
+        width: 100%;
+        min-width: 0;
+        grid-column: 1;
       }
 
       .vertical.right-aligned {
         align-items: flex-end;
+        justify-self: stretch;
+        width: 100%;
+        min-width: 0;
+        grid-column: 3;
       }
 
       /* Winrate Pie Chart */
@@ -68,6 +76,8 @@
         position: relative;
         width: 75px;
         height: 75px;
+        flex: 0 0 75px;
+        grid-column: 2;
       }
 
       #pie {
@@ -101,18 +111,17 @@
       }
 
       /* Turn Indicator */
-      .turn-indicator-left {
-        position: absolute;
-        top: 50%;
-        left: -25px;
-        transform: translateY(-50%);
+      .player-label {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 6px;
+        width: 100%;
       }
 
-      .turn-indicator-right {
-        position: absolute;
-        top: 50%;
-        right: -45px;
-        transform: translateY(-50%);
+      .vertical.right-aligned .player-label {
+        flex-direction: row;
+        justify-content: flex-end;
       }
 
       .turn-stone {
@@ -138,7 +147,7 @@
       .move-quality-indicator {
         position: absolute;
         top: 0;
-        right: -20px;
+        right: -24px;
         width: 12px;
         height: 75px;
         display: flex;
@@ -157,38 +166,39 @@
         box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
       }
 
-      .quality-circle.excellent {
-        background-color: #4caf50;
+      .quality-circle.blue {
+        background-color: #4cb2e5;
       }
-      .quality-circle.very-good {
-        background-color: #8bc34a;
+      .quality-circle.green {
+        background-color: #1d9500;
       }
-      .quality-circle.good {
-        background-color: #ffeb3b;
+      .quality-circle.yellow {
+        background-color: #cece00;
       }
-      .quality-circle.questionable {
-        background-color: #ff9800;
+      .quality-circle.red {
+        background-color: #cc0000;
       }
-      .quality-circle.bad {
-        background-color: #f44336;
-      }
-      .quality-circle.terrible {
-        background-color: #9c27b0;
+      .quality-circle.purple {
+        background-color: #90216b;
       }
 
-      /* Move Quality Index: per-player quality distribution (not raw counters) */
-      .move-quality-index {
-        width: 506px;
+      /* Move Quality Counter: per-player raw counts (not Index) */
+      .move-quality-counter {
+        width: 528px;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        gap: 10px;
+        gap: 8px;
         margin-top: -2px;
       }
 
       .mqi-player {
         display: flex;
-        gap: 4px;
+        gap: 3px;
+      }
+
+      .mqi-player.black {
+        justify-content: flex-start;
       }
 
       .mqi-player.white {
@@ -196,36 +206,39 @@
       }
 
       .mqi-box {
-        min-width: 38px;
-        height: 32px;
-        padding: 0 6px;
+        min-width: 34px;
+        height: 28px;
+        padding: 0 5px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
         border-radius: 4px;
-        border: 1px solid rgba(255, 255, 255, 0.75);
         box-shadow: 0 2px 5px rgba(0, 0, 0, 0.35);
         color: #000;
         font-family: "Roboto", sans-serif;
-        font-size: 22px;
+        font-size: 20px;
         font-weight: 900;
         line-height: 1;
       }
 
       .mqi-box.blue {
-        background: #2a5298;
+        background: #4cb2e5;
       }
 
       .mqi-box.green {
-        background: #4caf50;
+        background: #1d9500;
       }
 
       .mqi-box.yellow {
-        background: #ffeb3b;
+        background: #cece00;
       }
 
       .mqi-box.red {
-        background: #f44336;
+        background: #cc0000;
+      }
+
+      .mqi-box.purple {
+        background: #90216b;
       }
 
       /* Player Information */
@@ -350,7 +363,70 @@
       .counting {
         position: relative;
         width: 524px;
+        height: 96px;
+      }
+
+      .confidence-labels {
+        position: relative;
+        width: calc(100% + 4px);
+        height: 54px;
+        font-family: "Roboto", sans-serif;
+        font-size: 18px;
+        font-weight: 900;
+        line-height: 1.05;
+      }
+
+      .confidence-label {
+        position: absolute;
+        top: 8px;
+        white-space: nowrap;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+      }
+
+      #black-points {
+        left: 0;
+        color: black;
+      }
+
+      #white-points {
+        right: 0;
+        color: white;
+      }
+
+      #black-influence {
+        left: 25%;
+        transform: translateX(-50%);
+        color: black;
+        text-align: center;
+      }
+
+      #white-influence {
+        left: 75%;
+        transform: translateX(-50%);
+        color: white;
+        text-align: center;
+      }
+
+      #unclaimed-points {
+        left: 50%;
+        transform: translateX(-50%);
+        color: #654321;
+        text-align: center;
+      }
+
+      .confidence-bar {
+        position: relative;
+        width: 524px;
         height: 40px;
+        margin-top: 6px;
+        background: linear-gradient(
+          135deg,
+          #deb887 0%,
+          #d2b48c 25%,
+          #deb887 50%,
+          #d2b48c 75%,
+          #deb887 100%
+        );
         border: 2px solid #666;
         border-radius: 8px;
         overflow: hidden;
@@ -398,26 +474,6 @@
         border-radius: 0 6px 6px 0;
       }
 
-      #black-points, #white-points {
-        position: absolute;
-        top: 50%;
-        transform: translateY(-50%);
-        font-size: 20px;
-        font-weight: 700;
-        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
-        z-index: 10;
-      }
-
-      #black-points {
-        left: 12px;
-        color: white;
-      }
-
-      #white-points {
-        right: 12px;
-        color: black;
-      }
-
       .score-delta {
         position: absolute;
         bottom: 2px;
@@ -436,11 +492,26 @@
         opacity: 0;
       }
 
+      .winrate-bar-section {
+        width: 524px;
+        margin-top: 8px;
+      }
+
+      .winrate-bar-labels {
+        position: relative;
+        width: calc(100% + 4px);
+        height: 24px;
+        font-family: "Roboto", sans-serif;
+        font-size: 20px;
+        font-weight: 900;
+        line-height: 1;
+      }
+
       .winrate-bar {
         position: relative;
         width: 524px;
         height: 40px;
-        margin-top: 8px;
+        margin-top: 6px;
         border: 2px solid #666;
         border-radius: 8px;
         overflow: hidden;
@@ -471,29 +542,20 @@
       #winrate-bar-black-label,
       #winrate-bar-white-label {
         position: absolute;
-        top: 50%;
-        transform: translateY(-50%);
-        z-index: 4;
-        font-size: 20px;
-        font-weight: 900;
-        line-height: 1;
-        color: white;
-        -webkit-text-stroke: 1px black;
-        text-shadow:
-          -1px -1px 0 #000,
-          1px -1px 0 #000,
-          -1px 1px 0 #000,
-          1px 1px 0 #000;
+        top: 0;
         white-space: nowrap;
         pointer-events: none;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
       }
 
       #winrate-bar-black-label {
-        left: 12px;
+        left: 0;
+        color: black;
       }
 
       #winrate-bar-white-label {
-        right: 12px;
+        right: 0;
+        color: white;
       }
 
       #winrate-bar-arrow {
@@ -568,9 +630,17 @@
           padding: 10px;
         }
 
-        .information, .goboard, .counting {
+        .information,
+        .goboard,
+        .counting,
+        .winrate-bar-section,
+        .move-quality-counter {
           width: 90vw;
           max-width: 400px;
+        }
+
+        .winrate-bar {
+          width: 100%;
         }
 
         .goboard {
@@ -611,79 +681,101 @@
       <div class="information">
         <div class="vertical">
           <span id="black-clock" class="clock">00:00</span>
-          <span id="black-name" class="player-name">Black Player</span>
-        </div>
-        <div class="winrate">
-          <div id="pie"></div>
-          <div id="pie-over"></div>
-          <span id="pie-text">50%</span>
-          <!-- Turn Indicator Stones -->
-          <div class="turn-indicator-left">
+          <span class="player-label">
+            <span id="black-name" class="player-name">Black Player</span>
             <img
               id="black-turn-stone"
               class="turn-stone black"
               src="/assets/black_stone.png"
               alt="Black's turn"
             >
+          </span>
+        </div>
+        <div class="winrate">
+          <div id="pie"></div>
+          <div id="pie-over"></div>
+          <span id="pie-text">50%</span>
+          <!-- Move Quality Indicator: current played-move error value legend -->
+          <div class="move-quality-indicator">
+            <div class="quality-circle blue" title="Blue: <1pp WR loss"></div>
+            <div class="quality-circle green" title="Green: 1-3pp WR loss">
+            </div>
+            <div class="quality-circle yellow" title="Yellow: 3-6pp WR loss">
+            </div>
+            <div class="quality-circle red" title="Red: 6-12pp WR loss"></div>
+            <div class="quality-circle purple" title="Purple: ≥12pp WR loss">
+            </div>
           </div>
-          <div class="turn-indicator-right">
+        </div>
+        <div class="vertical right-aligned">
+          <span id="white-clock" class="clock">00:00</span>
+          <span class="player-label">
             <img
               id="white-turn-stone"
               class="turn-stone white"
               src="/assets/white_stone.png"
               alt="White's turn"
             >
-          </div>
-          <!-- Move Quality Indicator: current played-move error value legend -->
-          <div class="move-quality-indicator">
-            <div
-              class="quality-circle excellent"
-              title="Excellent moves (< 1pt loss)"
-            >
-            </div>
-            <div
-              class="quality-circle very-good"
-              title="Very good moves (1-3pt loss)"
-            >
-            </div>
-            <div
-              class="quality-circle good"
-              title="Good moves (3-6pt loss)"
-            >
-            </div>
-            <div
-              class="quality-circle questionable"
-              title="Questionable moves (6-12pt loss)"
-            >
-            </div>
-            <div class="quality-circle bad" title="Bad moves (12-24pt loss)">
-            </div>
-            <div
-              class="quality-circle terrible"
-              title="Terrible moves (≥24pt loss)"
-            >
-            </div>
-          </div>
-        </div>
-        <div class="vertical right-aligned">
-          <span id="white-clock" class="clock">00:00</span>
-          <span id="white-name" class="player-name">White Player</span>
+            <span id="white-name" class="player-name">White Player</span>
+          </span>
         </div>
       </div>
 
       <!-- Move Quality Counter: per-player raw counts, not percentages -->
-      <div class="move-quality-index" aria-label="Move quality index">
+      <div class="move-quality-counter" aria-label="Move quality counter">
         <div class="mqi-player black" aria-label="Black move quality index">
-          <span id="black-mqi-blue" class="mqi-box blue" title="Black blue move quality count">0</span>
-          <span id="black-mqi-green" class="mqi-box green" title="Black green move quality count">0</span>
-          <span id="black-mqi-yellow" class="mqi-box yellow" title="Black yellow move quality count">0</span>
-          <span id="black-mqi-red" class="mqi-box red" title="Black red move quality count">0</span>
+          <span
+            id="black-mqi-blue"
+            class="mqi-box blue"
+            title="Black blue move quality count"
+          >0</span>
+          <span
+            id="black-mqi-green"
+            class="mqi-box green"
+            title="Black green move quality count"
+          >0</span>
+          <span
+            id="black-mqi-yellow"
+            class="mqi-box yellow"
+            title="Black yellow move quality count"
+          >0</span>
+          <span
+            id="black-mqi-red"
+            class="mqi-box red"
+            title="Black red move quality count"
+          >0</span>
+          <span
+            id="black-mqi-purple"
+            class="mqi-box purple"
+            title="Black purple move quality count"
+          >0</span>
         </div>
         <div class="mqi-player white" aria-label="White move quality index">
-          <span id="white-mqi-blue" class="mqi-box blue" title="White blue move quality count">0</span>
-          <span id="white-mqi-green" class="mqi-box green" title="White green move quality count">0</span>
-          <span id="white-mqi-yellow" class="mqi-box yellow" title="White yellow move quality count">0</span>
-          <span id="white-mqi-red" class="mqi-box red" title="White red move quality count">0</span>
+          <span
+            id="white-mqi-blue"
+            class="mqi-box blue"
+            title="White blue move quality count"
+          >0</span>
+          <span
+            id="white-mqi-green"
+            class="mqi-box green"
+            title="White green move quality count"
+          >0</span>
+          <span
+            id="white-mqi-yellow"
+            class="mqi-box yellow"
+            title="White yellow move quality count"
+          >0</span>
+          <span
+            id="white-mqi-red"
+            class="mqi-box red"
+            title="White red move quality count"
+          >0</span>
+          <span
+            id="white-mqi-purple"
+            class="mqi-box purple"
+            title="White purple move quality count"
+          >0</span>
         </div>
       </div>
 
@@ -707,17 +799,28 @@
 
       <!-- Confidence Chart -->
       <div class="counting" id="counting">
-        <span id="black-points">0</span>
-        <span id="white-points">0</span>
+        <div class="confidence-labels">
+          <span id="black-points" class="confidence-label">0.0<br>points</span>
+          <span id="black-influence" class="confidence-label"></span>
+          <span id="unclaimed-points" class="confidence-label"
+          >361.0<br>unclaimed</span>
+          <span id="white-influence" class="confidence-label"></span>
+          <span id="white-points" class="confidence-label">0.0<br>points</span>
+        </div>
+        <div class="confidence-bar" id="confidence-bar"></div>
       </div>
 
       <!-- Winrate Bar -->
-      <div class="winrate-bar" id="winrate-bar">
-        <div id="winrate-bar-black"></div>
-        <div id="winrate-bar-white"></div>
-        <span id="winrate-bar-black-label">50%</span>
-        <span id="winrate-bar-white-label">50%</span>
-        <span id="winrate-bar-arrow"></span>
+      <div class="winrate-bar-section">
+        <div class="winrate-bar-labels">
+          <span id="winrate-bar-black-label">50%</span>
+          <span id="winrate-bar-white-label">50%</span>
+        </div>
+        <div class="winrate-bar" id="winrate-bar">
+          <div id="winrate-bar-black"></div>
+          <div id="winrate-bar-white"></div>
+          <span id="winrate-bar-arrow"></span>
+        </div>
       </div>
 
       <!-- Game Status -->
@@ -899,23 +1002,15 @@
         }
 
         calculateBlackBoxColor(i) {
-          // Black chart: Black to dark grey
-          // Highest confidence (bucket 11) = darkest black, lowest confidence (bucket 1) = lightest grey
-          const confidenceLevel = i; // i goes from 11 down to 1
-          const colorValue = 240 - (confidenceLevel * 20); // 240 (light grey) down to 20 (dark black)
-          const hex = Math.min(Math.max(colorValue, 20), 240).toString(16)
-            .padStart(2, "0");
-          return `#${hex}${hex}${hex}`;
+          // Four-color chart: point + influence per player. Only bucket 11
+          // (points) and bucket 1 (influence) are used by area/territory modes.
+          return i === this.config.TOTAL_BOXES ? "#000000" : "#555555";
         }
 
         calculateWhiteBoxColor(i) {
-          // White chart: White to light grey
-          // Highest confidence (bucket 11) = purest white, lowest confidence (bucket 1) = darker grey
-          const confidenceLevel = i; // i goes from 11 down to 1
-          const colorValue = 160 + (confidenceLevel * 8); // 160 (darker grey) up to 248 (near white)
-          const hex = Math.min(Math.max(colorValue, 160), 255).toString(16)
-            .padStart(2, "0");
-          return `#${hex}${hex}${hex}`;
+          // Four-color chart: point + influence per player. Only bucket 11
+          // (points) and bucket 1 (influence) are used by area/territory modes.
+          return i === this.config.TOTAL_BOXES ? "#ffffff" : "#aaaaaa";
         }
 
         addCenterLine(svg) {
@@ -927,11 +1022,12 @@
           centerLine.setAttributeNS(null, "stroke", "black");
           centerLine.setAttributeNS(null, "stroke-width", "2px");
           centerLine.setAttributeNS(null, "stroke-dasharray", "3");
+          centerLine.setAttributeNS(null, "id", "score-bar-center-line");
           svg.appendChild(centerLine);
         }
 
         mountScoreBar(svg) {
-          const countingContainer = document.getElementById("counting");
+          const countingContainer = document.getElementById("confidence-bar");
           if (countingContainer) {
             // Clear existing SVG if any
             const existingSvg = countingContainer.querySelector("svg");
@@ -945,7 +1041,13 @@
         }
 
         // Update score bar with new confidence values
-        updateScoreBar(blackScores, whiteScores) {
+        updateScoreBar(blackScores, whiteScores, options = {}) {
+          this.updateCenterLineVisibility(options);
+          if (options.scaleToActiveTotal) {
+            this.updateScoreBarByActiveTotal(blackScores, whiteScores, options);
+            return;
+          }
+
           const blackBack = document.getElementById("black-points-back");
           const whiteBack = document.getElementById("white-points-back");
 
@@ -1042,19 +1144,127 @@
           whiteBack.setAttribute("x", this.config.WIDTH - whiteTotal);
 
           // Update score text
-          this.updateScoreText(blackScores, whiteScores);
+          this.updateScoreText(blackScores, whiteScores, options);
         }
 
-        updateScoreText(blackScores, whiteScores) {
-          const blackTotal = blackScores.reduce((acc, val) => acc + val, 0);
-          const whiteTotal = whiteScores.reduce((acc, val) => acc + val, 0);
+        updateCenterLineVisibility(options = {}) {
+          const centerLine = document.getElementById("score-bar-center-line");
+          if (centerLine) {
+            centerLine.style.display = options.hideCenterLine ? "none" : "";
+          }
+        }
+
+        updateScoreBarByActiveTotal(blackScores, whiteScores, options = {}) {
+          const blackBack = document.getElementById("black-points-back");
+          const whiteBack = document.getElementById("white-points-back");
+
+          if (!blackBack || !whiteBack) {
+            console.error("Score bar backdrop elements not found");
+            return;
+          }
+
+          const previousBlackScores = this.previousBlackScores ||
+            Array(this.config.TOTAL_BOXES).fill(0);
+          const previousWhiteScores = this.previousWhiteScores ||
+            Array(this.config.TOTAL_BOXES).fill(0);
+
+          this.previousBlackScores = [...blackScores];
+          this.previousWhiteScores = [...whiteScores];
+
+          const blackGraphScores = options.pointsOnlyGraph
+            ? blackScores.map((value, index) => index === 10 ? value : 0)
+            : blackScores;
+          const whiteGraphScores = options.pointsOnlyGraph
+            ? whiteScores.map((value, index) => index === 10 ? value : 0)
+            : whiteScores;
+          const blackActiveTotal = blackGraphScores.reduce(
+            (sum, value) => sum + value,
+            0,
+          );
+          const whiteActiveTotal = whiteGraphScores.reduce(
+            (sum, value) => sum + value,
+            0,
+          );
+          const activeTotal = Math.max(1, blackActiveTotal + whiteActiveTotal);
+          let blackX = 0;
+          let whiteX = this.config.WIDTH;
+
+          for (let i = this.config.TOTAL_BOXES - 1; i >= 0; i--) {
+            const rect = document.getElementById(
+              getConfidencePointId("black", i + 1),
+            );
+            if (!rect) continue;
+            const score = blackGraphScores[i] || 0;
+            const previousScore = previousBlackScores[i] || 0;
+            const width = (score / activeTotal) * this.config.WIDTH;
+            if (score > 0) {
+              rect.setAttribute("width", width);
+              rect.setAttribute("height", this.config.HEIGHT);
+              rect.setAttribute("x", blackX);
+              rect.style.display = "block";
+              if (Math.abs(score - previousScore) > 3) {
+                rect.classList.add("animating");
+                setTimeout(() => rect.classList.remove("animating"), 400);
+              }
+              blackX += width;
+            } else {
+              rect.setAttribute("width", 0);
+              rect.style.display = "none";
+            }
+          }
+
+          for (let i = this.config.TOTAL_BOXES - 1; i >= 0; i--) {
+            const rect = document.getElementById(
+              getConfidencePointId("white", i + 1),
+            );
+            if (!rect) continue;
+            const score = whiteGraphScores[i] || 0;
+            const previousScore = previousWhiteScores[i] || 0;
+            const width = (score / activeTotal) * this.config.WIDTH;
+            if (score > 0) {
+              whiteX -= width;
+              rect.setAttribute("width", width);
+              rect.setAttribute("height", this.config.HEIGHT);
+              rect.setAttribute("x", whiteX);
+              rect.style.display = "block";
+              if (Math.abs(score - previousScore) > 3) {
+                rect.classList.add("animating");
+                setTimeout(() => rect.classList.remove("animating"), 400);
+              }
+            } else {
+              rect.setAttribute("width", 0);
+              rect.style.display = "none";
+            }
+          }
+
+          blackBack.setAttribute("width", blackX);
+          whiteBack.setAttribute("width", this.config.WIDTH - whiteX);
+          whiteBack.setAttribute("x", whiteX);
+
+          this.updateScoreText(blackScores, whiteScores, options);
+        }
+
+        updateScoreText(blackScores, whiteScores, options = {}) {
+          const blackTotal = options.blackPointsTotal ??
+            blackScores.reduce((acc, val) => acc + val, 0);
+          const whiteTotal = options.whitePointsTotal ??
+            whiteScores.reduce((acc, val) => acc + val, 0);
+          const blackInfluenceTotal = options.blackInfluenceTotal;
+          const whiteInfluenceTotal = options.whiteInfluenceTotal;
 
           const blackText = document.getElementById("black-points");
           const whiteText = document.getElementById("white-points");
+          const blackInfluenceText = document.getElementById("black-influence");
+          const whiteInfluenceText = document.getElementById("white-influence");
+          const unclaimedText = document.getElementById("unclaimed-points");
 
           // Get previous totals for animation
           const previousBlackTotal = this.previousBlackTotal || 0;
           const previousWhiteTotal = this.previousWhiteTotal || 0;
+          const previousBlackInfluenceTotal =
+            this.previousBlackInfluenceTotal || 0;
+          const previousWhiteInfluenceTotal =
+            this.previousWhiteInfluenceTotal || 0;
 
           this.updateDeltaIndicators(
             blackTotal - previousBlackTotal,
@@ -1062,22 +1272,62 @@
             this.hasScoreTotals,
           );
 
+          const unclaimedTotal = options.unclaimedTotal ??
+            Math.max(0, 361 - blackTotal - whiteTotal);
+          const previousUnclaimedTotal = this.previousUnclaimedTotal ?? 361;
+
           // Store current totals for next animation
           this.previousBlackTotal = blackTotal;
           this.previousWhiteTotal = whiteTotal;
+          this.previousBlackInfluenceTotal = blackInfluenceTotal || 0;
+          this.previousWhiteInfluenceTotal = whiteInfluenceTotal || 0;
+          this.previousUnclaimedTotal = unclaimedTotal;
           this.hasScoreTotals = true;
 
           // Animate the numbers if there's a significant change
           if (Math.abs(blackTotal - previousBlackTotal) > 0.5) {
             this.animateScoreText(blackText, previousBlackTotal, blackTotal);
           } else if (blackText) {
-            blackText.textContent = blackTotal.toFixed(1);
+            blackText.innerHTML = this.formatScorePoints(blackTotal);
           }
 
           if (Math.abs(whiteTotal - previousWhiteTotal) > 0.5) {
             this.animateScoreText(whiteText, previousWhiteTotal, whiteTotal);
           } else if (whiteText) {
-            whiteText.textContent = whiteTotal.toFixed(1);
+            whiteText.innerHTML = this.formatScorePoints(whiteTotal);
+          }
+
+          this.updateInfluenceText(
+            blackInfluenceText,
+            previousBlackInfluenceTotal,
+            blackInfluenceTotal,
+          );
+          this.updateInfluenceText(
+            whiteInfluenceText,
+            previousWhiteInfluenceTotal,
+            whiteInfluenceTotal,
+          );
+
+          if (options.hideUnclaimed) {
+            if (unclaimedText) {
+              unclaimedText.innerHTML = "";
+              unclaimedText.style.display = "none";
+            }
+          } else {
+            if (unclaimedText) unclaimedText.style.display = "";
+            if (Math.abs(unclaimedTotal - previousUnclaimedTotal) > 0.5) {
+              this.animateScoreText(
+                unclaimedText,
+                previousUnclaimedTotal,
+                unclaimedTotal,
+                "unclaimed",
+              );
+            } else if (unclaimedText) {
+              unclaimedText.innerHTML = this.formatScorePoints(
+                unclaimedTotal,
+                "unclaimed",
+              );
+            }
           }
         }
 
@@ -1116,7 +1366,33 @@
           element.classList.add("visible");
         }
 
-        animateScoreText(element, fromValue, toValue) {
+        formatScorePoints(value, label = "points") {
+          const rounded = Math.round(value * 2) / 2;
+          return `${rounded.toFixed(1)}<br>${label}`;
+        }
+
+        updateInfluenceText(element, previousValue, value) {
+          if (!element) return;
+          if (value === undefined) {
+            element.innerHTML = "";
+            element.style.display = "none";
+            return;
+          }
+
+          element.style.display = "";
+          if (Math.abs(value - previousValue) > 0.5) {
+            this.animateScoreText(element, previousValue, value, "influence");
+          } else {
+            element.innerHTML = this.formatScorePoints(value, "influence");
+          }
+        }
+
+        animateScoreText(
+          element,
+          fromValue,
+          toValue,
+          label = "points",
+        ) {
           if (!element) return;
 
           // Animation duration in milliseconds
@@ -1135,7 +1411,7 @@
               (toValue - fromValue) * easeOutQuart;
 
             // Update text with animated value
-            element.textContent = currentValue.toFixed(1);
+            element.innerHTML = this.formatScorePoints(currentValue, label);
 
             // Continue animation if not complete
             if (progress < 1) {
@@ -1414,12 +1690,14 @@
               green: document.getElementById("black-mqi-green"),
               yellow: document.getElementById("black-mqi-yellow"),
               red: document.getElementById("black-mqi-red"),
+              purple: document.getElementById("black-mqi-purple"),
             },
             white: {
               blue: document.getElementById("white-mqi-blue"),
               green: document.getElementById("white-mqi-green"),
               yellow: document.getElementById("white-mqi-yellow"),
               red: document.getElementById("white-mqi-red"),
+              purple: document.getElementById("white-mqi-purple"),
             },
           };
 
@@ -1427,10 +1705,11 @@
           this.scoreBarRenderer = new ScoreBarRenderer();
           this.currentMoveAnalysis = null; // Store current move analysis
           this.previousMoveAnalysis = null; // Store previous move analysis for quality comparison
-          this.currentMoveQualityColor = "#2a5298"; // Current played-move error/index color
+          this.currentMoveQualityColor = "#4CB2E5"; // Current played-move error/index color
           this.previousBestMove = null; // Store best move from previous analysis
           this.moveQualityState = null; // Backend-owned move quality counts and history
           this.lastMoveColor = null;
+          this.currentBoardState = null;
 
           // Animation state variables
           this.previousBlackPercent = 50; // For pie chart animation
@@ -1446,6 +1725,7 @@
           // URL parameter detection for pattern feature
           this.colorMode = this.getUrlParameter("c"); // 'black', 'white', 'quality', or null
           this.topPosition = this.getUrlParameter("t") === "1";
+          this.scoreBarMode = this.getScoreBarModeFromUrl(); // 'area' or 'territory'
 
           // Review timer parameters
           this.reviewTimeControl = this.getUrlParameter("tc"); // 'byo', 'can', 'fis', or null
@@ -1531,6 +1811,12 @@
           return new Set(normalized);
         }
 
+        getScoreBarModeFromUrl() {
+          const requested = this.getRequestedUiElements();
+          if (requested.has("territory")) return "territory";
+          return "area";
+        }
+
         applyElementVisibilityFromUrl() {
           const requested = this.getRequestedUiElements();
           if (requested.size === 0 || requested.has("all")) {
@@ -1545,40 +1831,43 @@
 
           const has = (...names) => names.some((name) => requested.has(name));
           const showBoard = has("board", "goban", "goboard");
-          const showScore = has("score", "counting", "points");
+          const showArea = has("area", "score", "counting", "points");
+          const showTerritory = has("territory");
+          const showScore = showArea || showTerritory;
           const showShape = has("shape", "pattern", "shape-name");
           const showStatus = has("status", "game-status");
           const showClock = has("clock", "clocks");
           const showPlayer = has("player", "players", "names", "player-info");
           const showPie = has("pie", "winrate", "wr");
-          const showBar = has("bar", "winrate-bar");
-          const showMove = has("move", "quality", "move-quality", "counter");
-          const showIndex = has("index", "mqi", "move-quality-index");
+          const showLegend = has("legend", "colors", "colour", "colours");
+          const showIndex = has("index", "mqi", "move", "quality", "move-quality", "counter");
+          const showEval = has("eval", "bar", "winrate-bar");
+          const showAllInfo = has("information", "info");
           const showInformation = showClock || showPlayer || showPie ||
-            showMove || showIndex || has("information", "info");
+            showLegend || showAllInfo;
 
           show(".goboard", showBoard);
           show(".counting", showScore);
-          show(".winrate-bar", showBar);
+          show(".winrate-bar-section", showEval);
           show(".shape-name", showShape);
           show(".game-status", showStatus);
           show(".information", showInformation);
-          show(".move-quality-index", showIndex || has("information", "info"));
+          show(".move-quality-counter", showIndex || showAllInfo);
 
           if (showInformation) {
-            show(".clock", showClock || has("information", "info"));
-            show(".player-name", showPlayer || has("information", "info"));
+            show(".clock", showClock || showAllInfo);
+            show(".player-label", showPlayer || showAllInfo);
             show(
               ".winrate",
-              showPie || showMove || has("information", "info"),
+              showPie || showLegend || showAllInfo,
             );
             show(
-              "#pie, #pie-over, #pie-text, .turn-indicator-left, .turn-indicator-right",
-              showPie || has("information", "info"),
+              "#pie, #pie-over, #pie-text",
+              showPie || showAllInfo,
             );
             show(
               ".move-quality-indicator",
-              showMove || has("information", "info"),
+              showLegend || showAllInfo,
             );
           }
 
@@ -2231,6 +2520,7 @@
         }
 
         updateBoard(moves, boardState = null) {
+          this.currentBoardState = boardState;
           console.log(
             "[UI] updateBoard called with boardState:",
             boardState ? "YES" : "NO",
@@ -2354,14 +2644,14 @@
           const strokeColor = isBlackStone ? "#FFFFFF" : "#000000"; // White stroke for black stone, black stroke for white stone
 
           // Determine color based on analysis result or default to green
-          let color = "#4CAF50"; // Default to green
+          let color = "#1D9500"; // Default to green
 
           // Check if this move matches the previous best move (blue move)
           if (this.previousBestMove && this.lastMoveNotation) {
             const playedMove = this.lastMoveNotation.toUpperCase();
             const bestMove = this.previousBestMove.toUpperCase();
             if (playedMove === bestMove) {
-              color = "#2196F3"; // Blue for best move
+              color = "#4CB2E5"; // Blue for best move
               console.log(
                 "[UI] BLUE MOVE! Played:",
                 playedMove,
@@ -2425,7 +2715,7 @@
             }
           } else if (!this.previousMoveAnalysis) {
             // Default to good move if no previous analysis
-            color = "#FFEB3B"; // Good move quality (yellow)
+            color = "#CECE00"; // Good move quality (yellow)
             console.log(
               "[UI] Move quality - No previous analysis, defaulting to good",
             );
@@ -2668,14 +2958,14 @@
 
         calculateMoveQuality() {
           // Calculate move quality color without placing a marker
-          let color = "#4CAF50"; // Default to green
+          let color = "#1D9500"; // Default to green
 
           // Check if this move matches the previous best move (blue move)
           if (this.previousBestMove && this.lastMoveNotation) {
             const playedMove = this.lastMoveNotation.toUpperCase();
             const bestMove = this.previousBestMove.toUpperCase();
             if (playedMove === bestMove) {
-              color = "#2196F3"; // Blue for best move
+              color = "#4CB2E5"; // Blue for best move
               console.log(
                 "[UI] BLUE MOVE! Played:",
                 playedMove,
@@ -2739,7 +3029,7 @@
             }
           } else if (!this.previousMoveAnalysis) {
             // Default to good move if no previous analysis
-            color = "#FFEB3B"; // Good move quality (yellow)
+            color = "#CECE00"; // Good move quality (yellow)
             console.log(
               "[UI] Move quality - No previous analysis, defaulting to good",
             );
@@ -2946,7 +3236,7 @@
           const summary = moveQualityState && moveQualityState.summary;
           if (!summary) return;
 
-          const colors = ["blue", "green", "yellow", "red"];
+          const colors = ["blue", "green", "yellow", "red", "purple"];
           for (const player of ["black", "white"]) {
             const counts = summary[player] || {};
 
@@ -2977,7 +3267,7 @@
                 color = "#FFFFFF"; // White text
               } else if (this.colorMode === "quality") {
                 // Use the same color as the move quality indicator
-                color = this.currentMoveQualityColor || "#4CAF50";
+                color = this.currentMoveQualityColor || "#1D9500";
               }
 
               // Apply the color
@@ -3038,48 +3328,32 @@
             return;
           }
 
-          function initBuckets() {
-            return {
-              total: 0,
-              buckets: Array(11).fill(0),
-            };
-          }
-
-          const result = {
-            player_1: initBuckets(), // Black
-            player_2: initBuckets(), // White
-          };
-
-          for (let i = 0; i < ownership.length; i++) {
-            const val = ownership[i];
-            const absVal = Math.abs(val);
-            const bucketIndex = Math.min(Math.floor(absVal * 10), 10);
-
-            if (val >= 0) {
-              result.player_1.total += val;
-              result.player_1.buckets[bucketIndex] += val;
-            } else {
-              result.player_2.total += absVal;
-              result.player_2.buckets[bucketIndex] += absVal;
-            }
-          }
-
-          // Round totals to 3 decimals
-          result.player_1.total = +result.player_1.total.toFixed(3);
-          result.player_2.total = +result.player_2.total.toFixed(3);
-
-          // Apply score lead adjustment to match actual game evaluation
-          const scoreLead = analysis.rootInfo?.scoreLead || 0;
-          this.adjustConfidenceForScoreLead(result, scoreLead);
+          const result = this.scoreBarMode === "territory"
+            ? this.buildTerritoryScoreResult(ownership)
+            : this.buildAreaScoreResult(
+              ownership,
+              analysis.rootInfo?.scoreLead || 0,
+            );
 
           // Update the confidence chart
           this.scoreBarRenderer.updateScoreBar(
             result.player_1.buckets,
             result.player_2.buckets,
+            {
+              blackPointsTotal: result.player_1.total,
+              whitePointsTotal: result.player_2.total,
+              blackInfluenceTotal: result.player_1.influenceTotal,
+              whiteInfluenceTotal: result.player_2.influenceTotal,
+              unclaimedTotal: result.unclaimedTotal,
+              hideUnclaimed: this.scoreBarMode === "territory",
+              scaleToActiveTotal: this.scoreBarMode === "territory",
+              pointsOnlyGraph: false,
+              hideCenterLine: this.scoreBarMode === "territory",
+            },
           );
 
           console.log(
-            "[UI] Ownership analysis - Black:",
+            `[UI] ${this.scoreBarMode} ownership analysis - Black:`,
             result.player_1.total,
             "White:",
             result.player_2.total,
@@ -3092,6 +3366,119 @@
             "[UI] White confidence buckets:",
             result.player_2.buckets,
           );
+        }
+
+        initScoreBuckets() {
+          return {
+            total: 0,
+            influenceTotal: undefined,
+            buckets: Array(11).fill(0),
+          };
+        }
+
+        createEmptyScoreResult() {
+          return {
+            player_1: this.initScoreBuckets(), // Black
+            player_2: this.initScoreBuckets(), // White
+          };
+        }
+
+        buildAreaScoreResult(ownership, scoreLead) {
+          const result = this.createEmptyScoreResult();
+
+          for (const val of ownership) {
+            const absVal = Math.abs(val);
+            const player = val >= 0 ? result.player_1 : result.player_2;
+
+            // Keep area counting exactly as before: totals use ownership value.
+            if (val >= 0) {
+              result.player_1.total += val;
+            } else {
+              result.player_2.total += absVal;
+            }
+
+            // Visual-only thresholding, matching territory chart:
+            // points | influence | unclaimed | influence | points.
+            if (absVal >= 0.8) {
+              player.buckets[10] += 1;
+            } else if (absVal >= 0.4) {
+              player.buckets[0] += 1;
+            }
+          }
+
+          result.player_1.total = +result.player_1.total.toFixed(3);
+          result.player_2.total = +result.player_2.total.toFixed(3);
+          this.adjustConfidenceForScoreLead(result, scoreLead);
+          return result;
+        }
+
+        buildTerritoryScoreResult(ownership) {
+          const result = this.createEmptyScoreResult();
+          const boardSize = Math.sqrt(ownership.length);
+          const boardState = this.currentBoardState;
+          const excludedOwnStones = { black: 0, white: 0 };
+
+          // Territory scoring includes komi for White.
+          result.player_2.total = 7.5;
+          result.player_2.buckets[10] = 7.5;
+
+          const getStoneAt = (index) => {
+            if (!boardState || !Number.isInteger(boardSize)) return 0;
+            const x = index % boardSize;
+            const y = Math.floor(index / boardSize);
+            return boardState[x]?.[y] ?? 0;
+          };
+
+          // Territory mode uses a simplified graph: solid territory is drawn
+          // as solid black/white, influence as the lighter black/darker white.
+          // Scoring is territory-style:
+          // - empty, strongly owned point: 1 point
+          // - opponent stone on a strongly owned point: 1 territory point +
+          //   exactly 1 extra prisoner/captured-stone point
+          // - own living stones and weak ownership are not doubled
+          for (let index = 0; index < ownership.length; index++) {
+            const val = ownership[index];
+            const absVal = Math.abs(val);
+            const isBlackOwnership = val >= 0;
+            const stone = getStoneAt(index);
+            const ownStone = isBlackOwnership ? 1 : 2;
+            const opponentStone = isBlackOwnership ? 2 : 1;
+            const isOwnStone = stone === ownStone;
+            const isCapturedStone = absVal >= 0.8 && stone === opponentStone;
+            const player = isBlackOwnership ? result.player_1 : result.player_2;
+
+            if (absVal < 0.4) {
+              result.unclaimedTotal = (result.unclaimedTotal || 0) + 1;
+              continue;
+            }
+
+            if (isOwnStone) {
+              if (isBlackOwnership) excludedOwnStones.black++;
+              else excludedOwnStones.white++;
+              result.unclaimedTotal = (result.unclaimedTotal || 0) + 1;
+              continue;
+            }
+
+            if (absVal >= 0.8) {
+              const pointValue = 1 + (isCapturedStone ? 1 : 0);
+              player.total += pointValue;
+              player.buckets[10] += pointValue;
+            } else {
+              player.influenceTotal = (player.influenceTotal || 0) + 1;
+              player.buckets[0] += 1;
+            }
+          }
+
+          result.player_1.influenceTotal = result.player_1.influenceTotal || 0;
+          result.player_2.influenceTotal = result.player_2.influenceTotal || 0;
+          result.unclaimedTotal = result.unclaimedTotal || 0;
+
+          console.log(
+            "[UI] Territory own stones excluded:",
+            excludedOwnStones,
+          );
+
+          return result;
         }
 
         adjustConfidenceForScoreLead(result, scoreLead) {
@@ -3176,12 +3563,11 @@
       // Current played-move error/index color calculation.
       // Separate from backend move-quality counter buckets.
       function getMoveQualityColor(scoreLoss) {
-        if (scoreLoss < 1) return "#4CAF50"; // Excellent - green
-        if (scoreLoss < 3) return "#8BC34A"; // Very good - light green
-        if (scoreLoss < 6) return "#FFEB3B"; // Good - yellow
-        if (scoreLoss < 12) return "#FF9800"; // Questionable - orange
-        if (scoreLoss < 24) return "#F44336"; // Bad - red
-        return "#9C27B0"; // Terrible - purple
+        if (scoreLoss < 1) return "#4CB2E5"; // Blue: <1pp WR loss
+        if (scoreLoss < 3) return "#1D9500"; // Green: 1-3pp WR loss
+        if (scoreLoss < 6) return "#CECE00"; // Yellow: 3-6pp WR loss
+        if (scoreLoss < 12) return "#CC0000"; // Red: 6-12pp WR loss
+        return "#90216B"; // Purple: ≥12pp WR loss
       }
     </script>
   </body>

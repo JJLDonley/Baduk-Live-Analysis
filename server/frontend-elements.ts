@@ -17,33 +17,41 @@ export function withElementVisibility(index: string, url: URL): string {
 
   const has = (...names: string[]) => names.some((name) => requested.has(name));
   const showBoard = has("board", "goban", "goboard");
-  const showScore = has("score", "counting", "points");
+  const showArea = has("area", "score", "counting", "points");
+  const showTerritory = has("territory");
+  const showScore = showArea || showTerritory;
   const showShape = has("shape", "pattern", "shape-name");
   const showStatus = has("status", "game-status");
   const showClock = has("clock", "clocks");
   const showPlayer = has("player", "players", "names", "player-info");
   const showPie = has("pie", "winrate", "wr");
-  const showBar = has("bar", "winrate-bar");
-  const showMove = has("move", "quality", "move-quality", "counter");
-  const showIndex = has("index", "mqi", "move-quality-index");
-  const showInfo = showClock || showPlayer || showPie || showMove ||
-    showIndex || has("information", "info");
+  const showLegend = has("legend", "colors", "colour", "colours");
+  const showIndex = has(
+    "index",
+    "mqi",
+    "move",
+    "quality",
+    "move-quality",
+    "counter",
+  );
+  const showEval = has("eval", "bar", "winrate-bar");
   const showAllInfo = has("information", "info");
+  const showInfo = showClock || showPlayer || showPie || showLegend ||
+    showAllInfo;
 
   const hiddenSelectors = [
     !showBoard && ".goboard",
     !showScore && ".counting",
-    !showBar && ".winrate-bar",
+    !showEval && ".winrate-bar-section",
     !showShape && ".shape-name",
     !showStatus && ".game-status",
     !showInfo && ".information",
-    !showIndex && !showAllInfo && ".move-quality-index",
+    !showIndex && !showAllInfo && ".move-quality-counter",
     showInfo && !showClock && !showAllInfo && ".clock",
-    showInfo && !showPlayer && !showAllInfo && ".player-name",
-    showInfo && !showPie && !showMove && !showAllInfo && ".winrate",
-    showInfo && !showPie && !showAllInfo &&
-    "#pie, #pie-over, #pie-text, .turn-indicator-left, .turn-indicator-right",
-    showInfo && !showMove && !showAllInfo && ".move-quality-indicator",
+    showInfo && !showPlayer && !showAllInfo && ".player-label",
+    showInfo && !showPie && !showLegend && !showAllInfo && ".winrate",
+    showInfo && !showPie && !showAllInfo && "#pie, #pie-over, #pie-text",
+    showInfo && !showLegend && !showAllInfo && ".move-quality-indicator",
   ].filter((selector): selector is string => Boolean(selector));
 
   const style = `<style id="server-element-filter">${

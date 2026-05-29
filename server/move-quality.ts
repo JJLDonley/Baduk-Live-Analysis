@@ -3,12 +3,14 @@ import { classifyMoveQuality, MoveQuality, PlayerColor } from "./models.ts";
 export interface KataGoMoveInfo {
   move?: string;
   scoreLead?: number;
+  winrate?: number;
 }
 
 export interface KataGoAnalysisLike {
   moveInfos?: KataGoMoveInfo[];
   rootInfo?: {
     scoreLead?: number;
+    winrate?: number;
   };
 }
 
@@ -27,45 +29,40 @@ export function normalizeKataGoMove(move: unknown): string {
   return String(move).trim().toUpperCase();
 }
 
-export function calculateMoveQuality(input: MoveQualityInput): MoveQuality {
-  const unknown = (): MoveQuality => ({
-    moveNumber: input.moveNumber,
-    move: input.move,
-    color: input.color,
-    scoreLoss: null,
-    quality: "unknown",
-  });
-
+export function calculateMoveQuality(
+  input: MoveQualityInput,
+): MoveQuality | undefined {
   const previousAnalysis = input.previousAnalysis;
-  if (!previousAnalysis?.moveInfos?.length) return unknown();
+  if (!previousAnalysis?.moveInfos?.length) return undefined;
 
   const normalizedMove = normalizeKataGoMove(input.move);
   const bestMove = previousAnalysis.moveInfos[0];
   const playedMove = previousAnalysis.moveInfos.find((info) =>
     normalizeKataGoMove(info.move) === normalizedMove
   );
+  const isBestMove = normalizeKataGoMove(bestMove?.move) === normalizedMove;
 
-  const bestScore = Number(bestMove?.scoreLead);
-  const playedScore = Number(
-    playedMove?.scoreLead ?? input.currentAnalysis?.rootInfo?.scoreLead,
+  const bestWinrate = Number(bestMove?.winrate);
+  const playedWinrate = Number(
+    playedMove?.winrate ?? input.currentAnalysis?.rootInfo?.winrate,
   );
 
-  if (!Number.isFinite(bestScore) || !Number.isFinite(playedScore)) {
-    return unknown();
+  if (!Number.isFinite(bestWinrate) || !Number.isFinite(playedWinrate)) {
+    return undefined;
   }
 
-  // KataGo scoreLead is black-perspective in analysis mode. Loss is from the
-  // player who made the move relative to the best available move before it.
+  // KataGo winrate is black-perspective. Loss is percentage points from the
+  // player who made the move, matching the frontend move-quality pie colors.
   const rawLoss = input.color === "black"
-    ? bestScore - playedScore
-    : playedScore - bestScore;
-  const scoreLoss = Math.max(0, rawLoss);
+    ? bestWinrate - playedWinrate
+    : playedWinrate - bestWinrate;
+  const scoreLoss = Math.max(0, rawLoss * 100);
 
   return {
     moveNumber: input.moveNumber,
     move: input.move,
     color: input.color,
     scoreLoss,
-    quality: classifyMoveQuality(scoreLoss),
+    quality: classifyMoveQuality(scoreLoss, isBestMove),
   };
 }

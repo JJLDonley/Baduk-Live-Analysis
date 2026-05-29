@@ -21,6 +21,7 @@ import {
   GameContextType,
   MoveQuality,
   MoveQualityState,
+  MoveQualityTracker,
   parseClientCommand,
 } from "./models.ts";
 
@@ -71,6 +72,21 @@ class AnalysisServer {
     Map<WebSocket, PendingAnalysisSubscriber>
   > = new Map();
   private sessions = new SessionStore();
+  private qualitySignatures = new Map<string, string>();
+  private qualityLines = new Map<
+    string,
+    { settingsSignature: string; moves: [string, string][] }
+  >();
+  private pendingQualityFrames = new Map<
+    string,
+    {
+      signature: string;
+      tracker: MoveQualityTracker;
+      targetMoveCount: number;
+      startMoveCount: number;
+      targetRequest: AnalysisRequest;
+    }
+  >();
   private serverStartTime: number;
 
   constructor(config: ServerConfig, configManager: ConfigManager) {
@@ -312,9 +328,16 @@ class AnalysisServer {
       `[Analysis] Received request ${analysisRequest.id} for ${context.key()} with ${analysisRequest.moves.length} moves`,
     );
 
+    this.prepareQualityFrame(analysisRequest);
     const cacheKey = this.getAnalysisCacheKey(analysisRequest);
     const cachedResponse = this.analysisCache.get(cacheKey);
-    if (cachedResponse) {
+    const qualityKnown = analysisRequest.moves.length === 0 ||
+      this.hasKnownMoveQuality(analysisRequest, analysisRequest.moves.length);
+
+    if (
+      cachedResponse && qualityKnown &&
+      !this.getQualityFrame(analysisRequest.context)
+    ) {
       const responseForSocket = {
         ...cachedResponse,
         id: analysisRequest.id,
@@ -342,22 +365,278 @@ class AnalysisServer {
       return;
     }
 
-    const pendingSockets = this.pendingAnalysisSockets.get(cacheKey);
-    if (pendingSockets) {
-      pendingSockets.set(socket, { id: analysisRequest.id, commandMode });
-      return;
-    }
-
-    this.pendingAnalysisSockets.set(
-      cacheKey,
+    // Prioritize the current board position for live UI updates. Then backfill
+    // any missing prefix analyses needed for move-quality classification. If the
+    // current move's previous-position analysis is missing, its cached current
+    // analysis is classified once backfill reaches that dependency.
+    this.queueAnalysisRequest(
+      analysisRequest,
       new Map([[socket, { id: analysisRequest.id, commandMode }]]),
+      true,
     );
-    analysisRequest.cacheKey = cacheKey;
-    this.analysisQueue.push(analysisRequest);
+    this.enqueueMissingMoveAnalyses(analysisRequest);
 
     if (!this.processingAnalysis) {
       this.processAnalysisQueue();
     }
+  }
+
+  private queueAnalysisRequest(
+    request: AnalysisRequest,
+    subscribers = new Map<WebSocket, PendingAnalysisSubscriber>(),
+    force = false,
+  ): boolean {
+    const cacheKey = request.cacheKey ?? this.getAnalysisCacheKey(request);
+    const pendingSockets = this.pendingAnalysisSockets.get(cacheKey);
+    if (pendingSockets) {
+      subscribers.forEach((subscriber, socket) => {
+        pendingSockets.set(socket, subscriber);
+      });
+      return false;
+    }
+
+    if (!force && this.analysisCache.get(cacheKey)) {
+      return false;
+    }
+
+    this.pendingAnalysisSockets.set(cacheKey, subscribers);
+    request.cacheKey = cacheKey;
+    if (force) {
+      this.analysisQueue.unshift(request);
+    } else {
+      this.analysisQueue.push(request);
+    }
+    return true;
+  }
+
+  private enqueueMissingMoveAnalyses(request: AnalysisRequest): boolean {
+    let queued = false;
+    const frame = this.getQualityFrame(request.context);
+    const startMoveCount = frame?.startMoveCount ?? 0;
+    for (
+      let moveCount = startMoveCount;
+      moveCount < request.moves.length;
+      moveCount++
+    ) {
+      const prefixRequest = this.createPrefixAnalysisRequest(
+        request,
+        moveCount,
+      );
+      const cacheKey = this.getAnalysisCacheKey(prefixRequest);
+      const cachedResponse = this.analysisCache.get(cacheKey);
+
+      if (cachedResponse && !frame) {
+        this.recordMoveQualityFromCachedAnalysis(prefixRequest, cachedResponse);
+        continue;
+      }
+
+      queued = this.queueAnalysisRequest(prefixRequest) || queued;
+    }
+    return queued;
+  }
+
+  private createPrefixAnalysisRequest(
+    request: AnalysisRequest,
+    moveCount: number,
+  ): AnalysisRequest {
+    return {
+      ...request,
+      id: `${request.id}/backfill/${moveCount}`,
+      moves: request.moves.slice(0, moveCount),
+      cacheKey: undefined,
+    };
+  }
+
+  private hasKnownMoveQuality(
+    request: AnalysisRequest,
+    moveNumber: number,
+  ): boolean {
+    return this.getQualityTrackerForRequest(request).getState().moves.some(
+      (move) => move.moveNumber === moveNumber,
+    );
+  }
+
+  private recordMoveQualityFromCachedAnalysis(
+    request: AnalysisRequest,
+    response: AnalysisResponse,
+  ): boolean {
+    if (request.moves.length === 0 || !response.analysis) return false;
+    if (this.hasKnownMoveQuality(request, request.moves.length)) {
+      return true;
+    }
+
+    const playerMoveQuality = this.calculatePlayerMoveQuality(
+      request,
+      response.analysis,
+    );
+    if (!playerMoveQuality) {
+      return false;
+    }
+
+    const tracker = this.getQualityTrackerForRequest(request);
+    response.playerMoveQuality = playerMoveQuality;
+    response.moveQuality = tracker.record(playerMoveQuality);
+    return true;
+  }
+
+  private prepareQualityFrame(request: AnalysisRequest): void {
+    const key = request.context.key();
+    const signature = this.getMoveLineSignature(request);
+    if (this.qualitySignatures.get(key) === signature) return;
+
+    const existing = this.pendingQualityFrames.get(key);
+    if (existing) {
+      if (existing.signature === signature) return;
+      existing.signature = signature;
+      existing.targetMoveCount = request.moves.length;
+      existing.targetRequest = request;
+      existing.startMoveCount = Math.min(
+        existing.startMoveCount,
+        request.moves.length,
+      );
+      return;
+    }
+
+    const settingsSignature = this.getMoveLineSettingsSignature(request);
+    const previousLine = this.qualityLines.get(key);
+    if (
+      previousLine?.settingsSignature === settingsSignature &&
+      this.isAppendOnlyMoveLine(previousLine.moves, request.moves)
+    ) {
+      this.pendingQualityFrames.set(key, {
+        signature,
+        tracker: this.sessions.getMoveQualityTracker(request.context),
+        targetMoveCount: request.moves.length,
+        startMoveCount: previousLine.moves.length,
+        targetRequest: request,
+      });
+      return;
+    }
+
+    const firstChangedMoveIndex = previousLine
+      ? this.getFirstMoveDifference(previousLine.moves, request.moves)
+      : 0;
+    const tracker = new MoveQualityTracker();
+    for (
+      const move of this.sessions.getMoveQualityTracker(request.context)
+        .getState().moves
+    ) {
+      if (
+        move.moveNumber <= request.moves.length &&
+        move.moveNumber <= firstChangedMoveIndex
+      ) {
+        tracker.record(move);
+      }
+    }
+
+    this.pendingQualityFrames.set(key, {
+      signature,
+      tracker,
+      targetMoveCount: request.moves.length,
+      startMoveCount: firstChangedMoveIndex,
+      targetRequest: request,
+    });
+  }
+
+  private getQualityFrame(context: GameContext) {
+    return this.pendingQualityFrames.get(context.key());
+  }
+
+  private getQualityTrackerForRequest(
+    request: AnalysisRequest,
+  ): MoveQualityTracker {
+    return this.getQualityFrame(request.context)?.tracker ??
+      this.sessions.getMoveQualityTracker(request.context);
+  }
+
+  private getMoveLineSignature(request: AnalysisRequest): string {
+    return JSON.stringify({
+      moves: request.moves,
+      settings: this.getMoveLineSettingsSignature(request),
+    });
+  }
+
+  private getMoveLineSettingsSignature(request: AnalysisRequest): string {
+    return JSON.stringify({
+      initialStones: request.initialStones ?? [],
+      rules: request.rules,
+      komi: request.komi,
+      boardXSize: request.boardXSize,
+      boardYSize: request.boardYSize,
+    });
+  }
+
+  private isAppendOnlyMoveLine(
+    previousMoves: [string, string][],
+    currentMoves: [string, string][],
+  ): boolean {
+    return currentMoves.length >= previousMoves.length &&
+      this.getFirstMoveDifference(previousMoves, currentMoves) ===
+        previousMoves.length;
+  }
+
+  private getFirstMoveDifference(
+    previousMoves: [string, string][],
+    currentMoves: [string, string][],
+  ): number {
+    const sharedLength = Math.min(previousMoves.length, currentMoves.length);
+    for (let i = 0; i < sharedLength; i++) {
+      if (
+        previousMoves[i][0] !== currentMoves[i][0] ||
+        previousMoves[i][1] !== currentMoves[i][1]
+      ) {
+        return i;
+      }
+    }
+    return sharedLength;
+  }
+
+  private refreshCachedMoveQualityForFrame(context: GameContext): void {
+    const frame = this.pendingQualityFrames.get(context.key());
+    if (!frame) return;
+
+    for (let moveCount = 1; moveCount <= frame.targetMoveCount; moveCount++) {
+      const prefixRequest = this.createPrefixAnalysisRequest(
+        frame.targetRequest,
+        moveCount,
+      );
+      const cachedResponse = this.analysisCache.get(
+        this.getAnalysisCacheKey(prefixRequest),
+      );
+      if (cachedResponse) {
+        this.recordMoveQualityFromCachedAnalysis(prefixRequest, cachedResponse);
+      }
+    }
+  }
+
+  private commitQualityFrameIfComplete(
+    request: AnalysisRequest,
+    response: AnalysisResponse,
+  ): AnalysisResponse {
+    const key = request.context.key();
+    const frame = this.pendingQualityFrames.get(key);
+    if (!frame) return response;
+
+    const qualityState = frame.tracker.getState();
+    const complete = frame.targetMoveCount === 0 ||
+      Array.from({ length: frame.targetMoveCount }, (_, index) => index + 1)
+        .every((moveNumber) =>
+          qualityState.moves.some((move) => move.moveNumber === moveNumber)
+        );
+    if (!complete) return { ...response, moveQuality: qualityState };
+
+    this.sessions.setMoveQualityTracker(request.context, frame.tracker);
+    this.qualitySignatures.set(key, frame.signature);
+    this.qualityLines.set(key, {
+      settingsSignature: this.getMoveLineSettingsSignature(frame.targetRequest),
+      moves: frame.targetRequest.moves.map(([color, move]) => [color, move]),
+    });
+    this.pendingQualityFrames.delete(key);
+
+    return {
+      ...response,
+      moveQuality: frame.tracker.getState(),
+    };
   }
 
   private async processAnalysisQueue(): Promise<void> {
@@ -404,6 +683,7 @@ class AnalysisServer {
     }
 
     const cacheKey = request.cacheKey ?? this.getAnalysisCacheKey(request);
+    const isBackfillRequest = request.id.includes("/backfill/");
 
     // Convert moves to KataGo format
     const katagoQuery = this.convertToKataGoFormat(request);
@@ -423,7 +703,7 @@ class AnalysisServer {
 
       // Parse and send response
       const analysisResult = JSON.parse(response);
-      const analysisResponse: AnalysisResponse = {
+      let analysisResponse: AnalysisResponse = {
         id: request.id,
         context: { type: request.context.type, id: request.context.id },
         analysis: analysisResult,
@@ -433,18 +713,29 @@ class AnalysisServer {
         ),
         timestamp: Date.now(),
       };
+      const tracker = this.getQualityTrackerForRequest(request);
       if (analysisResponse.playerMoveQuality) {
-        const tracker = this.sessions.getMoveQualityTracker(request.context);
         analysisResponse.moveQuality = tracker.record(
           analysisResponse.playerMoveQuality,
         );
       } else {
-        analysisResponse.moveQuality = this.sessions.getMoveQualityTracker(
-          request.context,
-        ).getState();
+        analysisResponse.moveQuality = tracker.getState();
       }
       this.analysisCache.set(cacheKey, analysisResponse);
-      this.sessions.setLatestAnalysis(request.context, analysisResponse);
+      this.refreshCachedMoveQualityForFrame(request.context);
+      const hadQualityFrame = this.pendingQualityFrames.has(
+        request.context.key(),
+      );
+      analysisResponse = this.commitQualityFrameIfComplete(
+        request,
+        analysisResponse,
+      );
+      const completedQualityFrame = hadQualityFrame &&
+        !this.pendingQualityFrames.has(request.context.key());
+      this.analysisCache.set(cacheKey, analysisResponse);
+      if (!isBackfillRequest) {
+        this.sessions.setLatestAnalysis(request.context, analysisResponse);
+      }
 
       const sockets = this.pendingAnalysisSockets.get(cacheKey) ??
         new Map<WebSocket, PendingAnalysisSubscriber>();
@@ -458,18 +749,27 @@ class AnalysisServer {
             responseForSocket,
             subscriber.id,
           );
-          this.sendServerEvent(
-            socket,
-            "move-quality-updated",
-            request.context,
-            responseForSocket.moveQuality,
-            subscriber.id,
-          );
+          if (responseForSocket.moveQuality) {
+            this.sendServerEvent(
+              socket,
+              "move-quality-updated",
+              request.context,
+              responseForSocket.moveQuality,
+              subscriber.id,
+            );
+          }
         } else {
           this.sendAnalysisResponse(socket, responseForSocket);
         }
       });
       this.pendingAnalysisSockets.delete(cacheKey);
+
+      if (isBackfillRequest || completedQualityFrame) {
+        this.broadcastMoveQualityUpdate(
+          request.context,
+          analysisResponse.moveQuality,
+        );
+      }
 
       // Process pattern matching for the latest move
       for (const socket of sockets.keys()) {
@@ -536,6 +836,19 @@ class AnalysisServer {
       const sessionMove = this.sessions.getGameState(request.context)?.moves[
         request.moves.length - 1
       ];
+
+      if (sessionMove?.move === "pass" || move === "pass") {
+        this.sendPatternMatchResponse(socket, {
+          type: "pattern-match",
+          id: `${request.id}-pattern`,
+          moveName: "Pass",
+          pattern: null,
+          match: null,
+          timestamp: Date.now(),
+        });
+        console.log(`[PatternMatch] Latest move is pass for ${request.id}`);
+        return;
+      }
 
       // Prefer backend canonical coordinates from synced session state.
       let vertex: [number, number];
@@ -712,6 +1025,24 @@ class AnalysisServer {
       }
     } catch (error) {
       console.error(`[WebSocket] Error sending error:`, error);
+    }
+  }
+
+  private broadcastMoveQualityUpdate(
+    context: GameContext,
+    moveQuality: MoveQualityState | undefined,
+  ): void {
+    if (!moveQuality) return;
+    for (const socket of this.websocketConnections) {
+      const socketContext = this.socketContexts.get(socket);
+      if (socketContext?.key() === context.key()) {
+        this.sendServerEvent(
+          socket,
+          "move-quality-updated",
+          context,
+          moveQuality,
+        );
+      }
     }
   }
 

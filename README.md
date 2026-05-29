@@ -35,8 +35,8 @@ representation.
 - **Winrate Pie Chart**: Visual representation of position evaluation
 - **Confidence Bar**: Territory/confidence distribution chart
 - **Score Display**: Territory and capture tracking
-- **Move Quality Counter**: Per-player blue/green/yellow/red raw move counts, not percentages
-- **Move Quality Index**: Separate from the counter; current UI exposes the count boxes as `Move`/`Index` elements
+- **Move Quality Counter**: Per-player blue/green/yellow/red/purple raw move counts based on WR% loss, not percentages
+- **Move Quality Index**: Separate from the counter; not shown by the counter element
 - **Game Status**: Current phase and player to move
 
 ## Quick Start
@@ -104,22 +104,23 @@ Use singular, short names. Names are case-insensitive.
 | `Board` | Go board |
 | `Player` | Player names |
 | `Clock` | Player clocks |
-| `Pie` | Winrate pie |
-| `Bar` | Confidence/winrate bar |
-| `Score` | Score/counting panel |
-| `Move` | Move quality counter: actual move counts, not percentages |
-| `Index` | Move Quality Index boxes |
+| `Pie` | WR pie chart |
+| `Legend` | Move-quality color legend |
+| `Index` | Move quality counters |
 | `Shape` | Shape/pattern name |
+| `Territory` | Territory chart |
+| `Area` | Area chart, previously confidence chart |
+| `Eval` | Winrate/evaluation bar |
 | `Status` | Game status text |
 
-Legacy aliases like `players`, `winrate`, `move-quality`, and `mqi` are still accepted, but new URLs should use the short singular names above.
+Legacy aliases like `players`, `winrate`, `move-quality`, `mqi`, `bar`, and `score` are still accepted, but new URLs should use the short singular names above.
 
 ### **Element Examples**
 
 ```
 http://localhost:8080/game/77081213?element=Board
-http://localhost:8080/game/77081213?elements=Player,Clock,Pie,Move,Index,Board
-http://localhost:8080/review/123456?elements=Shape,Board,Bar,Score
+http://localhost:8080/game/77081213?elements=Player,Clock,Pie,Legend,Index,Board
+http://localhost:8080/review/123456?elements=Shape,Board,Eval,Area
 ```
 
 ### **Examples**

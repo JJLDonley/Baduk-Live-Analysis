@@ -1,6 +1,6 @@
 export type GameContextType = "game" | "review";
 export type PlayerColor = "black" | "white";
-export type MoveQualityColor = "blue" | "green" | "yellow" | "red" | "unknown";
+export type MoveQualityColor = "blue" | "green" | "yellow" | "red" | "purple";
 
 export class GameContext {
   constructor(public type: GameContextType, public id: string) {}
@@ -67,7 +67,7 @@ export interface QualityCounts {
   green: number;
   yellow: number;
   red: number;
-  unknown: number;
+  purple: number;
   total: number;
   averageScoreLoss: number | null;
 }
@@ -108,12 +108,14 @@ export interface ServerEvent<TPayload = unknown> {
 
 export function classifyMoveQuality(
   scoreLoss: number | null,
+  isBestMove = false,
 ): MoveQualityColor {
-  if (scoreLoss === null || !Number.isFinite(scoreLoss)) return "unknown";
-  if (scoreLoss < 0.5) return "blue";
-  if (scoreLoss < 1.5) return "green";
-  if (scoreLoss < 3) return "yellow";
-  return "red";
+  if (scoreLoss === null || !Number.isFinite(scoreLoss)) return "purple";
+  if (isBestMove || scoreLoss < 1) return "blue";
+  if (scoreLoss < 3) return "green";
+  if (scoreLoss < 6) return "yellow";
+  if (scoreLoss < 12) return "red";
+  return "purple";
 }
 
 function createQualityCounts(): QualityCounts {
@@ -122,7 +124,7 @@ function createQualityCounts(): QualityCounts {
     green: 0,
     yellow: 0,
     red: 0,
-    unknown: 0,
+    purple: 0,
     total: 0,
     averageScoreLoss: null,
   };

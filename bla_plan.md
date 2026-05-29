@@ -62,12 +62,12 @@ Create shared backend models for:
 - `ClientCommand`
 - `ServerEvent`
 
-Move quality buckets:
+Move quality buckets use black-perspective KataGo WR% loss from the player who moved:
 
-- `blue`: score loss `< 0.5`
-- `green`: score loss `>= 0.5 && < 1.5`
-- `yellow`: score loss `>= 1.5 && < 3`
-- `red`: score loss `>= 3`
+- `blue`: played KataGo's top move
+- `green`: WR loss `< 3pp`
+- `yellow`: WR loss `>= 3pp && < 6pp`
+- `red`: WR loss `>= 6pp`
 - `unknown`: missing/invalid comparison data
 
 This tracker is not the same as the frontend's current move marker coloring. It
