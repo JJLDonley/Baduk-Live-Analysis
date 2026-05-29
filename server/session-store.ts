@@ -43,6 +43,13 @@ export class SessionStore {
     return tracker;
   }
 
+  setMoveQualityTracker(
+    context: GameContext,
+    tracker: MoveQualityTracker,
+  ): void {
+    this.qualityTrackers.set(context.key(), tracker);
+  }
+
   getSessionState(context: GameContext): SessionState {
     return {
       context: context.toJSON(),

@@ -6,14 +6,17 @@ import {
   parseClientCommand,
 } from "../models.ts";
 
-Deno.test("classifyMoveQuality uses BLA score-loss thresholds", () => {
-  assertEquals(classifyMoveQuality(null), "unknown");
-  assertEquals(classifyMoveQuality(0.49), "blue");
-  assertEquals(classifyMoveQuality(0.5), "green");
-  assertEquals(classifyMoveQuality(1.49), "green");
-  assertEquals(classifyMoveQuality(1.5), "yellow");
-  assertEquals(classifyMoveQuality(2.99), "yellow");
-  assertEquals(classifyMoveQuality(3), "red");
+Deno.test("classifyMoveQuality uses WR-loss thresholds", () => {
+  assertEquals(classifyMoveQuality(null), "purple");
+  assertEquals(classifyMoveQuality(0, true), "blue");
+  assertEquals(classifyMoveQuality(0.99), "blue");
+  assertEquals(classifyMoveQuality(1), "green");
+  assertEquals(classifyMoveQuality(2.99), "green");
+  assertEquals(classifyMoveQuality(3), "yellow");
+  assertEquals(classifyMoveQuality(5.99), "yellow");
+  assertEquals(classifyMoveQuality(6), "red");
+  assertEquals(classifyMoveQuality(11.99), "red");
+  assertEquals(classifyMoveQuality(12), "purple");
 });
 
 Deno.test("MoveQualityTracker tracks per-player counts and averages", () => {
