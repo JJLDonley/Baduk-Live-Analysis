@@ -1,9 +1,9 @@
 {
   "tasks": {
-    "dev": "deno run --allow-read --allow-net --watch ./server.ts",
-    "frontend": "deno run --allow-read --allow-net --watch ./server.ts",
-    "ai": "deno run --allow-read --allow-run --allow-net --watch ./server/server.ts",
-    "server": "deno run --allow-read --allow-run --allow-net --watch ./server/server.ts"
+    "dev": "deno run -Ar --watch ./server.ts",
+    "frontend": "deno run -Ar --watch ./server.ts",
+    "ai": "deno run -Ar --watch ./server/server.ts",
+    "server": "deno run -Ar --watch ./server/server.ts"
   },
   "imports": {
     "@sabaki/boardmatcher": "npm:@sabaki/boardmatcher@^1.3.0",

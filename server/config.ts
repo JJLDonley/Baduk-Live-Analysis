@@ -333,7 +333,7 @@ export class ArgumentParser {
     console.log(`
 Baduk Live Analysis Server
 
-Usage: deno run --allow-all server/server.ts [options]
+Usage: deno run -Ar server/server.ts [options]
 
 Options:
   -p, --port <port>           Server port (default: 8081)
@@ -350,9 +350,9 @@ Options:
   --help                      Show this help message
 
 Examples:
-  deno run --allow-all server/server.ts --port 8082 --max-visits 200
-  deno run --allow-all server/server.ts --katago-dir ./custom-katago --katago-exe katago
-  deno run --allow-all server/server.ts --host 0.0.0.0 --port 8080
+  deno run -Ar server/server.ts --port 8082 --max-visits 200
+  deno run -Ar server/server.ts --katago-dir ./custom-katago --katago-exe katago
+  deno run -Ar server/server.ts --host 0.0.0.0 --port 8080
         `);
   }
 }

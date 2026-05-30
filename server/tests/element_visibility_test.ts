@@ -1,6 +1,7 @@
 import { assertEquals, assertStringIncludes } from "@std/assert";
 import {
   getRequestedElements,
+  getRequestedSideElements,
   withElementVisibility,
 } from "../frontend-elements.ts";
 
@@ -15,6 +16,15 @@ Deno.test("getRequestedElements parses element and elements parameters", () => {
   ]);
 });
 
+Deno.test("getRequestedSideElements parses black and white parameters", () => {
+  const url = new URL(
+    "http://localhost/game/1?black=player,index,clock&white=clock",
+  );
+  const requested = getRequestedSideElements(url);
+  assertEquals([...requested.black].sort(), ["clock", "index", "player"]);
+  assertEquals([...requested.white].sort(), ["clock"]);
+});
+
 Deno.test("withElementVisibility injects server-side hiding CSS", () => {
   const html = "<html><head></head><body></body></html>";
   const url = new URL("http://localhost/game/1?element=board");
@@ -23,6 +33,19 @@ Deno.test("withElementVisibility injects server-side hiding CSS", () => {
   assertStringIncludes(filtered, "server-element-filter");
   assertStringIncludes(filtered, ".information");
   assertStringIncludes(filtered, ".counting");
+});
+
+Deno.test("withElementVisibility supports side-specific modules", () => {
+  const html = "<html><head></head><body></body></html>";
+  const url = new URL("http://localhost/game/1?black=player,index,clock");
+  const filtered = withElementVisibility(html, url);
+
+  assertStringIncludes(filtered, "#white-clock");
+  assertStringIncludes(filtered, ".player-label.white");
+  assertStringIncludes(filtered, ".mqi-player.white");
+  assertStringIncludes(filtered, ".goboard");
+  assertStringIncludes(filtered, "background: transparent");
+  assertStringIncludes(filtered, "width: auto");
 });
 
 Deno.test("withElementVisibility does not inject when all elements are requested", () => {

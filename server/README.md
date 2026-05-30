@@ -86,22 +86,22 @@ created with default values on first run.
 
 ```bash
 # Start server with default configuration (run from project root)
-deno run --allow-all server/server.ts
+deno run -Ar server/server.ts
 
 # Start server with custom port
-deno run --allow-all server/server.ts --port 8082
+deno run -Ar server/server.ts --port 8082
 
 # Start server with custom KataGo directory
-deno run --allow-all server/server.ts --katago-dir ./my-katago
+deno run -Ar server/server.ts --katago-dir ./my-katago
 
 # Start server accessible from all interfaces
-deno run --allow-all server/server.ts --host 0.0.0.0
+deno run -Ar server/server.ts --host 0.0.0.0
 ```
 
 ### Command Line Arguments
 
 ```bash
-deno run --allow-all server/server.ts [options]
+deno run -Ar server/server.ts [options]
 
 Options:
   -p, --port <port>           Server port (default: 8081)
@@ -122,16 +122,16 @@ Options:
 
 ```bash
 # High-performance setup
-deno run --allow-all server/server.ts --port 8082 --max-visits 200 --max-concurrent 5
+deno run -Ar server/server.ts --port 8082 --max-visits 200 --max-concurrent 5
 
 # Custom KataGo installation
-deno run --allow-all server/server.ts --katago-dir ./custom-katago --katago-exe katago
+deno run -Ar server/server.ts --katago-dir ./custom-katago --katago-exe katago
 
 # Public server (accessible from network)
-deno run --allow-all server/server.ts --host 0.0.0.0 --port 8080
+deno run -Ar server/server.ts --host 0.0.0.0 --port 8080
 
 # Debug mode with logging
-deno run --allow-all server/server.ts --log-level debug --log-file analysis.log
+deno run -Ar server/server.ts --log-level debug --log-file analysis.log
 ```
 
 ## WebSocket API
@@ -235,7 +235,7 @@ const status = getAIStatus();
 Enable debug logging to troubleshoot issues:
 
 ```bash
-deno run --allow-all server/server.ts --log-level debug
+deno run -Ar server/server.ts --log-level debug
 ```
 
 ### Configuration Validation
@@ -258,19 +258,19 @@ For different use cases:
 **Light Usage (1-2 concurrent analyses)**
 
 ```bash
-deno run --allow-all server/server.ts --max-visits 50 --max-concurrent 2
+deno run -Ar server/server.ts --max-visits 50 --max-concurrent 2
 ```
 
 **Heavy Usage (Multiple concurrent games)**
 
 ```bash
-deno run --allow-all server/server.ts --max-visits 200 --max-concurrent 5 --timeout 60000
+deno run -Ar server/server.ts --max-visits 200 --max-concurrent 5 --timeout 60000
 ```
 
 **Production Server**
 
 ```bash
-deno run --allow-all server/server.ts --host 0.0.0.0 --port 8080 --max-visits 100 --max-concurrent 3
+deno run -Ar server/server.ts --host 0.0.0.0 --port 8080 --max-visits 100 --max-concurrent 3
 ```
 
 ### Resource Requirements

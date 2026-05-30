@@ -410,7 +410,7 @@
       #unclaimed-points {
         left: 50%;
         transform: translateX(-50%);
-        color: #654321;
+        color: #deb887;
         text-align: center;
       }
 
@@ -679,9 +679,9 @@
     <div class="container">
       <!-- Player Information -->
       <div class="information">
-        <div class="vertical">
+        <div class="vertical player-panel black">
           <span id="black-clock" class="clock">00:00</span>
-          <span class="player-label">
+          <span class="player-label black">
             <span id="black-name" class="player-name">Black Player</span>
             <img
               id="black-turn-stone"
@@ -707,9 +707,9 @@
             </div>
           </div>
         </div>
-        <div class="vertical right-aligned">
+        <div class="vertical right-aligned player-panel white">
           <span id="white-clock" class="clock">00:00</span>
-          <span class="player-label">
+          <span class="player-label white">
             <img
               id="white-turn-stone"
               class="turn-stone white"
@@ -1775,6 +1775,7 @@
           this.setupScoreBar();
           this.setupEventHandlers();
           this.applyElementVisibilityFromUrl();
+          this.applyWidthScaleFromUrl();
         }
 
         setupBoard() {
@@ -1797,18 +1798,30 @@
           return urlParams.get(name);
         }
 
+        parseElementList(values) {
+          return new Set(
+            values
+              .filter(Boolean)
+              .flatMap((value) => value.split(","))
+              .map((value) => value.trim().toLowerCase())
+              .filter(Boolean),
+          );
+        }
+
         getRequestedUiElements() {
           const urlParams = new URLSearchParams(window.location.search);
-          const values = [];
-          const single = urlParams.get("element");
-          const multiple = urlParams.get("elements");
-          if (single) values.push(single);
-          if (multiple) values.push(...multiple.split(","));
-          const normalized = values
-            .flatMap((value) => value.split(","))
-            .map((value) => value.trim().toLowerCase())
-            .filter(Boolean);
-          return new Set(normalized);
+          return this.parseElementList([
+            urlParams.get("element"),
+            urlParams.get("elements"),
+          ]);
+        }
+
+        getRequestedSideElements() {
+          const urlParams = new URLSearchParams(window.location.search);
+          return {
+            black: this.parseElementList([urlParams.get("black")]),
+            white: this.parseElementList([urlParams.get("white")]),
+          };
         }
 
         getScoreBarModeFromUrl() {
@@ -1817,34 +1830,177 @@
           return "area";
         }
 
+        getRequestedWidthPx() {
+          const rawWidth = this.getUrlParameter("width");
+          if (!rawWidth) return null;
+          const match = rawWidth.trim().match(/^(\d+(?:\.\d+)?)(?:px)?$/i);
+          if (!match) return null;
+          const width = Number(match[1]);
+          return Number.isFinite(width) && width > 0 ? width : null;
+        }
+
+        applyWidthScaleFromUrl() {
+          const requestedWidth = this.getRequestedWidthPx();
+          if (!requestedWidth) return;
+
+          const container = document.querySelector(".container");
+          if (!container) return;
+
+          const apply = () => {
+            container.style.transform = "";
+            container.style.transformOrigin = "top left";
+
+            const baseWidth = container.offsetWidth;
+            if (!baseWidth) return;
+
+            const scale = requestedWidth / baseWidth;
+            container.style.transform = `scale(${scale})`;
+
+            const rect = container.getBoundingClientRect();
+            document.documentElement.style.width = `${requestedWidth}px`;
+            document.body.style.width = `${requestedWidth}px`;
+            document.documentElement.style.height = `${rect.height}px`;
+            document.body.style.height = `${rect.height}px`;
+            document.body.style.overflow = "hidden";
+            document.body.dataset.requestedWidth = String(requestedWidth);
+            document.body.dataset.uiScale = String(scale);
+            console.log("[UI] Applied width scale", {
+              requestedWidth,
+              baseWidth,
+              scale,
+            });
+          };
+
+          requestAnimationFrame(() => {
+            apply();
+            requestAnimationFrame(apply);
+          });
+        }
+
         applyElementVisibilityFromUrl() {
           const requested = this.getRequestedUiElements();
-          if (requested.size === 0 || requested.has("all")) {
+          const sideRequested = this.getRequestedSideElements();
+          const hasSideFilters = sideRequested.black.size > 0 ||
+            sideRequested.white.size > 0;
+          if (
+            (requested.size === 0 && !hasSideFilters) || requested.has("all")
+          ) {
             return;
           }
 
           const show = (selector, visible) => {
             document.querySelectorAll(selector).forEach((element) => {
-              element.style.display = visible ? "" : "none";
+              if (visible) {
+                element.style.removeProperty("display");
+              } else {
+                element.style.setProperty("display", "none", "important");
+              }
             });
           };
 
+          const applyCompactIframeStyles = () => {
+            if (document.getElementById("client-side-filter-compact")) return;
+            const style = document.createElement("style");
+            style.id = "client-side-filter-compact";
+            style.textContent = `
+body {
+  background: transparent !important;
+  padding: 0 !important;
+  min-height: auto !important;
+  align-items: flex-start !important;
+}
+.container {
+  align-items: flex-start !important;
+  gap: 4px !important;
+}
+.information {
+  width: auto !important;
+  padding: 0 !important;
+  gap: 8px !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  backdrop-filter: none !important;
+}
+.player-panel {
+  width: auto !important;
+  justify-self: auto !important;
+}
+.player-panel.white,
+.player-panel.white .player-label {
+  align-items: flex-start !important;
+  justify-content: flex-start !important;
+}
+.player-label .turn-stone {
+  display: inline-block !important;
+  opacity: 0.3;
+}
+.player-label .turn-stone.active {
+  opacity: 1;
+}
+.move-quality-counter {
+  width: auto !important;
+  justify-content: flex-start !important;
+  margin-top: 0 !important;
+}
+`;
+            document.head.appendChild(style);
+          };
+
           const has = (...names) => names.some((name) => requested.has(name));
+          const hasClock = (set) =>
+            ["clock", "clocks"].some((name) => set.has(name));
+          const hasPlayer = (set) =>
+            ["player", "players", "names", "player-info"].some((name) =>
+              set.has(name)
+            );
+          const hasIndex = (set) =>
+            ["index", "mqi", "move", "quality", "move-quality", "counter"].some(
+              (name) => set.has(name),
+            );
           const showBoard = has("board", "goban", "goboard");
           const showArea = has("area", "score", "counting", "points");
           const showTerritory = has("territory");
           const showScore = showArea || showTerritory;
           const showShape = has("shape", "pattern", "shape-name");
           const showStatus = has("status", "game-status");
-          const showClock = has("clock", "clocks");
-          const showPlayer = has("player", "players", "names", "player-info");
           const showPie = has("pie", "winrate", "wr");
           const showLegend = has("legend", "colors", "colour", "colours");
-          const showIndex = has("index", "mqi", "move", "quality", "move-quality", "counter");
           const showEval = has("eval", "bar", "winrate-bar");
           const showAllInfo = has("information", "info");
-          const showInformation = showClock || showPlayer || showPie ||
-            showLegend || showAllInfo;
+
+          const showBlackClock = showAllInfo ||
+            (hasSideFilters
+              ? hasClock(sideRequested.black)
+              : hasClock(requested));
+          const showWhiteClock = showAllInfo ||
+            (hasSideFilters
+              ? hasClock(sideRequested.white)
+              : hasClock(requested));
+          const showBlackPlayer = showAllInfo ||
+            (hasSideFilters
+              ? hasPlayer(sideRequested.black)
+              : hasPlayer(requested));
+          const showWhitePlayer = showAllInfo ||
+            (hasSideFilters
+              ? hasPlayer(sideRequested.white)
+              : hasPlayer(requested));
+          const showBlackIndex = showAllInfo ||
+            (hasSideFilters
+              ? hasIndex(sideRequested.black)
+              : hasIndex(requested));
+          const showWhiteIndex = showAllInfo ||
+            (hasSideFilters
+              ? hasIndex(sideRequested.white)
+              : hasIndex(requested));
+          const showInformation = showBlackClock || showWhiteClock ||
+            showBlackPlayer || showWhitePlayer || showPie || showLegend ||
+            showAllInfo;
+          const showAnyIndex = showBlackIndex || showWhiteIndex;
+
+          if (hasSideFilters) {
+            applyCompactIframeStyles();
+          }
 
           show(".goboard", showBoard);
           show(".counting", showScore);
@@ -1852,30 +2008,39 @@
           show(".shape-name", showShape);
           show(".game-status", showStatus);
           show(".information", showInformation);
-          show(".move-quality-counter", showIndex || showAllInfo);
+          if (hasSideFilters && showInformation) {
+            document.querySelectorAll(".information").forEach((element) => {
+              element.style.setProperty("display", "flex", "important");
+            });
+          }
+          show(".move-quality-counter", showAnyIndex);
 
           if (showInformation) {
-            show(".clock", showClock || showAllInfo);
-            show(".player-label", showPlayer || showAllInfo);
-            show(
-              ".winrate",
-              showPie || showLegend || showAllInfo,
-            );
-            show(
-              "#pie, #pie-over, #pie-text",
-              showPie || showAllInfo,
-            );
-            show(
-              ".move-quality-indicator",
-              showLegend || showAllInfo,
-            );
+            show("#black-clock", showBlackClock);
+            show("#white-clock", showWhiteClock);
+            show(".player-label.black", showBlackPlayer);
+            show(".player-label.white", showWhitePlayer);
+            show(".player-panel.black", showBlackClock || showBlackPlayer);
+            show(".player-panel.white", showWhiteClock || showWhitePlayer);
+            show(".winrate", showPie || showLegend || showAllInfo);
+            show("#pie, #pie-over, #pie-text", showPie || showAllInfo);
+            show(".move-quality-indicator", showLegend || showAllInfo);
+          }
+          if (showAnyIndex) {
+            show(".mqi-player.black", showBlackIndex);
+            show(".mqi-player.white", showWhiteIndex);
           }
 
           document.body.dataset.visibleElements = [...requested].join(",");
-          console.log(
-            "[UI] Applied element visibility:",
-            document.body.dataset.visibleElements,
-          );
+          document.body.dataset.visibleBlackElements = [...sideRequested.black]
+            .join(",");
+          document.body.dataset.visibleWhiteElements = [...sideRequested.white]
+            .join(",");
+          console.log("[UI] Applied element visibility", {
+            elements: document.body.dataset.visibleElements,
+            black: document.body.dataset.visibleBlackElements,
+            white: document.body.dataset.visibleWhiteElements,
+          });
         }
 
         moveShapeNameToTop() {
