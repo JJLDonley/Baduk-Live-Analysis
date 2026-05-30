@@ -428,7 +428,16 @@ class AIAnalysisManager {
         encodeURIComponent(this.context.id)
       }`
       : "";
-    const wsUrl = `ws://${this.hostname}:${this.port}${contextQuery}`;
+    const pageProtocol = globalThis.location?.protocol;
+    const isHttpsPage = pageProtocol === "https:";
+    const isDefaultAiEndpoint =
+      this.hostname === globalThis.location?.hostname &&
+      Number(this.port) === 8081;
+    const wsUrl = isHttpsPage && isDefaultAiEndpoint
+      ? `wss://${globalThis.location.host}/ai/${contextQuery}`
+      : `${
+        isHttpsPage ? "wss" : "ws"
+      }://${this.hostname}:${this.port}${contextQuery}`;
     console.log(`[AIAnalysis] Connecting to ${wsUrl}`);
 
     try {

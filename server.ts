@@ -9,7 +9,22 @@ function safeClientPath(pathname: string): string | null {
   return `client${normalized}`;
 }
 
-Deno.serve({ hostname: "0.0.0.0", port: 8080 }, async (req) => {
+function envOrDefault(name: string, fallback: string): string {
+  try {
+    return Deno.env.get(name) ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+const frontendHost = envOrDefault("BLA_FRONTEND_HOST", "127.0.0.1");
+const frontendPort = Number(envOrDefault("BLA_FRONTEND_PORT", "8080"));
+
+console.log(
+  `[Server] Frontend listening on http://${frontendHost}:${frontendPort}`,
+);
+
+Deno.serve({ hostname: frontendHost, port: frontendPort }, async (req) => {
   const url = new URL(req.url);
   const pathname = url.pathname;
 
