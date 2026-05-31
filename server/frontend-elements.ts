@@ -52,6 +52,14 @@ function hasIndex(requested: Set<string>): boolean {
   );
 }
 
+function hasPoints(requested: Set<string>): boolean {
+  return hasToken(requested, "points", "score", "area", "territory");
+}
+
+function hasWinrate(requested: Set<string>): boolean {
+  return hasToken(requested, "winrate", "wr", "eval");
+}
+
 export function withElementVisibility(index: string, url: URL): string {
   const requested = getRequestedElements(url);
   const sideRequested = getRequestedSideElements(url);
@@ -75,6 +83,7 @@ export function withElementVisibility(index: string, url: URL): string {
   const showLegend = has("legend", "colors", "colour", "colours");
   const showGlobalIndex = hasIndex(requested);
   const showEval = has("eval", "bar", "winrate-bar");
+  const showResult = has("result", "results", "winner", "outcome", "game-over");
   const showAllInfo = has("information", "info");
 
   const showBlackClock = showAllInfo ||
@@ -89,17 +98,24 @@ export function withElementVisibility(index: string, url: URL): string {
     (hasSideFilters ? hasIndex(sideRequested.black) : showGlobalIndex);
   const showWhiteIndex = showAllInfo ||
     (hasSideFilters ? hasIndex(sideRequested.white) : showGlobalIndex);
+  const showBlackPoints = hasSideFilters && hasPoints(sideRequested.black);
+  const showWhitePoints = hasSideFilters && hasPoints(sideRequested.white);
+  const showBlackWinrate = hasSideFilters && hasWinrate(sideRequested.black);
+  const showWhiteWinrate = hasSideFilters && hasWinrate(sideRequested.white);
 
   const showInfo = showBlackClock || showWhiteClock || showBlackPlayer ||
-    showWhitePlayer || showPie || showLegend || showAllInfo;
+    showWhitePlayer || showPie || showLegend || showBlackWinrate ||
+    showWhiteWinrate || showAllInfo;
   const showAnyIndex = showBlackIndex || showWhiteIndex;
 
   const hiddenSelectors = [
     !showBoard && ".goboard",
-    !showScore && ".counting",
-    !showEval && ".winrate-bar-section",
+    !(showScore || showBlackPoints || showWhitePoints) && ".counting",
+    !(showEval || showBlackWinrate || showWhiteWinrate) &&
+    ".winrate-bar-section",
     !showShape && ".shape-name",
     !showStatus && ".game-status",
+    !showResult && ".result-modal",
     !showInfo && ".information",
     !showAnyIndex && ".move-quality-counter",
     showInfo && !showBlackClock && "#black-clock",
@@ -111,6 +127,17 @@ export function withElementVisibility(index: string, url: URL): string {
     showInfo && !showPie && !showLegend && !showAllInfo && ".winrate",
     showInfo && !showPie && !showAllInfo && "#pie, #pie-over, #pie-text",
     showInfo && !showLegend && !showAllInfo && ".move-quality-indicator",
+    (showScore || showBlackPoints || showWhitePoints) && hasSideFilters &&
+    !showBlackPoints && !showScore && "#black-points",
+    (showScore || showBlackPoints || showWhitePoints) && hasSideFilters &&
+    !showWhitePoints && !showScore && "#white-points",
+    (showBlackPoints || showWhitePoints) && !showScore &&
+    "#unclaimed-points, #confidence-bar",
+    (showEval || showBlackWinrate || showWhiteWinrate) && hasSideFilters &&
+    !showBlackWinrate && !showEval && "#winrate-bar-black-label",
+    (showEval || showBlackWinrate || showWhiteWinrate) && hasSideFilters &&
+    !showWhiteWinrate && !showEval && "#winrate-bar-white-label",
+    (showBlackWinrate || showWhiteWinrate) && !showEval && "#winrate-bar",
     showAnyIndex && !showBlackIndex && ".mqi-player.black",
     showAnyIndex && !showWhiteIndex && ".mqi-player.white",
   ].filter((selector): selector is string => Boolean(selector));
@@ -118,7 +145,17 @@ export function withElementVisibility(index: string, url: URL): string {
   const hideCss = hiddenSelectors.length > 0
     ? `${hiddenSelectors.join(",")} { display: none !important; }`
     : "";
-  const compactCss = hasSideFilters
+  const leftAlignCss = `
+body {
+  padding: 0 !important;
+  min-height: auto !important;
+  align-items: flex-start !important;
+}
+.container {
+  align-items: flex-start !important;
+}
+`;
+  const compactCss = requested.size > 0 || hasSideFilters
     ? `
 body {
   background: transparent !important;
@@ -164,6 +201,6 @@ body {
 `
     : "";
   const style =
-    `<style id="server-element-filter">${compactCss}${hideCss}</style>`;
+    `<style id="server-element-filter">${leftAlignCss}${compactCss}${hideCss}</style>`;
   return index.replace("</head>", `${style}\n</head>`);
 }

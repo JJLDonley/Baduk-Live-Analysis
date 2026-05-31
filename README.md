@@ -37,6 +37,7 @@ Use URL params to show only the pieces you want. Names are case-insensitive.
 | `area`      | Area/counting chart       |
 | `territory` | Territory chart           |
 | `eval`      | Winrate/evaluation bar    |
+| `result`    | Game result modal (B+/W+) |
 | `status`    | Game status text          |
 
 ## Side-specific iframe modules
@@ -49,8 +50,10 @@ iframes/overlays.
 ?white=player
 ?black=clock
 ?white=index
-?black=player,index,clock
-?white=player,index,clock
+?black=points
+?white=winrate
+?black=player,index,clock,points,winrate
+?white=player,index,clock,points,winrate
 ```
 
 Player modules include the turn indicator on the correct side:

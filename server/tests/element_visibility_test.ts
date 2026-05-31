@@ -48,6 +48,17 @@ Deno.test("withElementVisibility supports side-specific modules", () => {
   assertStringIncludes(filtered, "width: auto");
 });
 
+Deno.test("withElementVisibility supports side-specific points and winrate", () => {
+  const html = "<html><head></head><body></body></html>";
+  const url = new URL("http://localhost/game/1?black=points,winrate");
+  const filtered = withElementVisibility(html, url);
+
+  assertStringIncludes(filtered, "#white-points");
+  assertStringIncludes(filtered, "#unclaimed-points, #confidence-bar");
+  assertStringIncludes(filtered, "#winrate-bar-white-label");
+  assertStringIncludes(filtered, "#winrate-bar");
+});
+
 Deno.test("withElementVisibility does not inject when all elements are requested", () => {
   const html = "<html><head></head><body></body></html>";
   const url = new URL("http://localhost/game/1?element=all");

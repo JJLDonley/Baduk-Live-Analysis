@@ -763,7 +763,8 @@ class AIAnalysisManager {
   getKomi(gameState) {
     // Default komi for even games
     // TODO: Extract from game state if available
-    return gameState.komi || 6.5;
+    const komi = Number(gameState.komi);
+    return Number.isFinite(komi) ? komi : 7.5;
   }
 
   // Get board size

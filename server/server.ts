@@ -726,9 +726,8 @@ class AnalysisServer {
       }
       this.analysisCache.set(cacheKey, analysisResponse);
       this.refreshCachedMoveQualityForFrame(request.context);
-      const hadQualityFrame = this.pendingQualityFrames.has(
-        request.context.key(),
-      );
+      const qualityFrameBeforeCommit = this.getQualityFrame(request.context);
+      const hadQualityFrame = Boolean(qualityFrameBeforeCommit);
       analysisResponse = this.commitQualityFrameIfComplete(
         request,
         analysisResponse,
@@ -738,6 +737,13 @@ class AnalysisServer {
       this.analysisCache.set(cacheKey, analysisResponse);
       if (!isBackfillRequest) {
         this.sessions.setLatestAnalysis(request.context, analysisResponse);
+      }
+      if (completedQualityFrame && qualityFrameBeforeCommit) {
+        this.publishCompletedQualityFrame(
+          request.context,
+          qualityFrameBeforeCommit.targetRequest,
+          analysisResponse.moveQuality,
+        );
       }
 
       const sockets = this.pendingAnalysisSockets.get(cacheKey) ??
@@ -1047,6 +1053,38 @@ class AnalysisServer {
           "move-quality-updated",
           context,
           moveQuality,
+        );
+      }
+    }
+  }
+
+  private publishCompletedQualityFrame(
+    context: GameContext,
+    targetRequest: AnalysisRequest,
+    moveQuality: MoveQualityState | undefined,
+  ): void {
+    if (!moveQuality) return;
+    const targetCacheKey = this.getAnalysisCacheKey(targetRequest);
+    const latest = this.analysisCache.get(targetCacheKey);
+    if (!latest) return;
+
+    const completedLatest: AnalysisResponse = {
+      ...latest,
+      moveQuality,
+      timestamp: Date.now(),
+    };
+    this.analysisCache.set(targetCacheKey, completedLatest);
+    this.sessions.setLatestAnalysis(context, completedLatest);
+
+    for (const socket of this.websocketConnections) {
+      const socketContext = this.socketContexts.get(socket);
+      if (socketContext?.key() === context.key()) {
+        this.sendServerEvent(
+          socket,
+          "analysis-completed",
+          context,
+          completedLatest,
+          completedLatest.id,
         );
       }
     }

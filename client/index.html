@@ -20,13 +20,13 @@
 
       /* Base Styles */
       body {
-        background: grey;
+        background: transparent;
         margin: 0;
         padding: 20px;
         font-family: "Roboto", sans-serif;
         display: flex;
         flex-direction: column;
-        align-items: center;
+        align-items: flex-start;
         min-height: 100vh;
         box-sizing: border-box;
       }
@@ -34,7 +34,7 @@
       .container {
         display: flex;
         flex-direction: column;
-        align-items: center;
+        align-items: flex-start;
         gap: 8px;
       }
 
@@ -271,14 +271,7 @@
       .goboard {
         width: 524px;
         height: 524px;
-        background: linear-gradient(
-          135deg,
-          #deb887 0%,
-          #d2b48c 25%,
-          #deb887 50%,
-          #d2b48c 75%,
-          #deb887 100%
-        );
+        background: #deb887 url("/assets/board.png") center / cover no-repeat;
         border: 2px solid #000000;
         border-radius: 8px;
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
@@ -346,6 +339,14 @@
         text-shadow: 0 4px 12px rgba(0, 0, 0, 0.8);
         letter-spacing: 4px;
         animation: gameOverPulse 2s ease-in-out infinite alternate;
+      }
+
+      .result-modal {
+        display: none;
+        width: 524px;
+        min-height: 80px;
+        align-items: center;
+        justify-content: flex-start;
       }
 
       @keyframes gameOverPulse {
@@ -792,6 +793,11 @@
         </div>
       </div>
 
+      <!-- Result Modal -->
+      <div class="result-modal" id="result-modal">
+        <div class="game-over-text" id="result-modal-text">B+</div>
+      </div>
+
       <!-- Shape Name - Positioned between board and score bar -->
       <div class="shape-name" id="shape-name">
         Shape name
@@ -922,6 +928,13 @@
           );
           blackGroup.appendChild(blackBackdrop);
 
+          // Explicit unclaimed center strip so small gaps remain visible.
+          const unclaimedBackdrop = this.createBackdrop(
+            "unclaimed-points-back",
+            "#deb887",
+          );
+          svg.appendChild(unclaimedBackdrop);
+
           // White backdrop
           const whiteGroup = document.createElementNS(this.svgNS, "g");
           svg.appendChild(whiteGroup);
@@ -1019,7 +1032,7 @@
           centerLine.setAttributeNS(null, "y1", 0);
           centerLine.setAttributeNS(null, "x2", this.config.WIDTH / 2);
           centerLine.setAttributeNS(null, "y2", this.config.HEIGHT);
-          centerLine.setAttributeNS(null, "stroke", "black");
+          centerLine.setAttributeNS(null, "stroke", "red");
           centerLine.setAttributeNS(null, "stroke-width", "2px");
           centerLine.setAttributeNS(null, "stroke-dasharray", "3");
           centerLine.setAttributeNS(null, "id", "score-bar-center-line");
@@ -1065,8 +1078,7 @@
           this.previousBlackScores = [...blackScores];
           this.previousWhiteScores = [...whiteScores];
 
-          // Scale buckets to 361 total intersections (19x19 board)
-          const TOTAL_INTERSECTIONS = 361;
+          const scaleTotal = Math.max(1, options.graphTotal ?? 361);
 
           let blackTotal = 0;
           let whiteTotal = 0;
@@ -1080,7 +1092,7 @@
             if (rect) {
               const score = blackScores[i] || 0;
               const previousScore = previousBlackScores[i] || 0;
-              const widthPercent = score / TOTAL_INTERSECTIONS;
+              const widthPercent = score / scaleTotal;
               const width = widthPercent * this.config.WIDTH;
 
               // Only show width if there's actual data
@@ -1113,7 +1125,7 @@
             if (rect) {
               const score = whiteScores[i] || 0;
               const previousScore = previousWhiteScores[i] || 0;
-              const widthPercent = score / TOTAL_INTERSECTIONS;
+              const widthPercent = score / scaleTotal;
               const width = widthPercent * this.config.WIDTH;
 
               // Only show width if there's actual data
@@ -1142,6 +1154,11 @@
           blackBack.setAttribute("width", blackTotal);
           whiteBack.setAttribute("width", whiteTotal);
           whiteBack.setAttribute("x", this.config.WIDTH - whiteTotal);
+          this.updateUnclaimedBackdrop(
+            document.getElementById("unclaimed-points-back"),
+            blackTotal,
+            whiteTotal,
+          );
 
           // Update score text
           this.updateScoreText(blackScores, whiteScores, options);
@@ -1240,8 +1257,22 @@
           blackBack.setAttribute("width", blackX);
           whiteBack.setAttribute("width", this.config.WIDTH - whiteX);
           whiteBack.setAttribute("x", whiteX);
+          this.updateUnclaimedBackdrop(
+            document.getElementById("unclaimed-points-back"),
+            blackX,
+            this.config.WIDTH - whiteX,
+          );
 
           this.updateScoreText(blackScores, whiteScores, options);
+        }
+
+        updateUnclaimedBackdrop(element, blackWidth, whiteWidth) {
+          if (!element) return;
+          const gapX = blackWidth;
+          const gapWidth = Math.max(0, this.config.WIDTH - blackWidth - whiteWidth);
+          element.setAttribute("x", gapX);
+          element.setAttribute("width", gapWidth > 0 && gapWidth < 2 ? 2 : gapWidth);
+          element.style.display = gapWidth > 0 ? "block" : "none";
         }
 
         updateScoreText(blackScores, whiteScores, options = {}) {
@@ -1470,7 +1501,7 @@
           background.setAttributeNS(null, "y", this.boardConfig.OFFSET);
           background.setAttributeNS(null, "width", this.boardConfig.GRID_SIZE);
           background.setAttributeNS(null, "height", this.boardConfig.GRID_SIZE);
-          background.setAttributeNS(null, "fill", "rgba(0, 0, 0, 0.05)");
+          background.setAttributeNS(null, "fill", "transparent");
           svg.appendChild(background);
         }
 
@@ -1684,6 +1715,8 @@
           this.whiteTurnStone = document.getElementById("white-turn-stone");
           this.gameOverOverlay = document.getElementById("game-over-overlay");
           this.gameOverText = document.getElementById("game-over-text");
+          this.resultModal = document.getElementById("result-modal");
+          this.resultModalText = document.getElementById("result-modal-text");
           this.moveQualityIndexElements = {
             black: {
               blue: document.getElementById("black-mqi-blue"),
@@ -1710,6 +1743,7 @@
           this.moveQualityState = null; // Backend-owned move quality counts and history
           this.lastMoveColor = null;
           this.currentBoardState = null;
+          this.currentKomi = 7.5;
 
           // Animation state variables
           this.previousBlackPercent = 50; // For pie chart animation
@@ -1898,6 +1932,23 @@
             });
           };
 
+          const applyLeftAlignStyles = () => {
+            if (document.getElementById("client-side-filter-left-align")) return;
+            const style = document.createElement("style");
+            style.id = "client-side-filter-left-align";
+            style.textContent = `
+body {
+  padding: 0 !important;
+  min-height: auto !important;
+  align-items: flex-start !important;
+}
+.container {
+  align-items: flex-start !important;
+}
+`;
+            document.head.appendChild(style);
+          };
+
           const applyCompactIframeStyles = () => {
             if (document.getElementById("client-side-filter-compact")) return;
             const style = document.createElement("style");
@@ -1958,6 +2009,10 @@ body {
             ["index", "mqi", "move", "quality", "move-quality", "counter"].some(
               (name) => set.has(name),
             );
+          const hasPoints = (set) =>
+            ["points", "score", "area", "territory"].some((name) => set.has(name));
+          const hasWinrate = (set) =>
+            ["winrate", "wr", "eval"].some((name) => set.has(name));
           const showBoard = has("board", "goban", "goboard");
           const showArea = has("area", "score", "counting", "points");
           const showTerritory = has("territory");
@@ -1967,6 +2022,7 @@ body {
           const showPie = has("pie", "winrate", "wr");
           const showLegend = has("legend", "colors", "colour", "colours");
           const showEval = has("eval", "bar", "winrate-bar");
+          const showResult = has("result", "results", "winner", "outcome", "game-over");
           const showAllInfo = has("information", "info");
 
           const showBlackClock = showAllInfo ||
@@ -1993,20 +2049,24 @@ body {
             (hasSideFilters
               ? hasIndex(sideRequested.white)
               : hasIndex(requested));
+          const showBlackPoints = hasSideFilters && hasPoints(sideRequested.black);
+          const showWhitePoints = hasSideFilters && hasPoints(sideRequested.white);
+          const showBlackWinrate = hasSideFilters && hasWinrate(sideRequested.black);
+          const showWhiteWinrate = hasSideFilters && hasWinrate(sideRequested.white);
           const showInformation = showBlackClock || showWhiteClock ||
             showBlackPlayer || showWhitePlayer || showPie || showLegend ||
-            showAllInfo;
+            showBlackWinrate || showWhiteWinrate || showAllInfo;
           const showAnyIndex = showBlackIndex || showWhiteIndex;
 
-          if (hasSideFilters) {
-            applyCompactIframeStyles();
-          }
+          applyLeftAlignStyles();
+          applyCompactIframeStyles();
 
           show(".goboard", showBoard);
-          show(".counting", showScore);
-          show(".winrate-bar-section", showEval);
+          show(".counting", showScore || showBlackPoints || showWhitePoints);
+          show(".winrate-bar-section", showEval || showBlackWinrate || showWhiteWinrate);
           show(".shape-name", showShape);
           show(".game-status", showStatus);
+          show(".result-modal", showResult);
           show(".information", showInformation);
           if (hasSideFilters && showInformation) {
             document.querySelectorAll(".information").forEach((element) => {
@@ -2025,6 +2085,16 @@ body {
             show(".winrate", showPie || showLegend || showAllInfo);
             show("#pie, #pie-over, #pie-text", showPie || showAllInfo);
             show(".move-quality-indicator", showLegend || showAllInfo);
+          }
+          if (showScore || showBlackPoints || showWhitePoints) {
+            show("#black-points", !hasSideFilters || showBlackPoints || showScore);
+            show("#white-points", !hasSideFilters || showWhitePoints || showScore);
+            show("#unclaimed-points, #confidence-bar", showScore);
+          }
+          if (showEval || showBlackWinrate || showWhiteWinrate) {
+            show("#winrate-bar-black-label", !hasSideFilters || showBlackWinrate || showEval);
+            show("#winrate-bar-white-label", !hasSideFilters || showWhiteWinrate || showEval);
+            show("#winrate-bar", showEval);
           }
           if (showAnyIndex) {
             show(".mqi-player.black", showBlackIndex);
@@ -2651,6 +2721,10 @@ body {
         }
 
         updateUI(gameState) {
+          this.currentKomi = Number.isFinite(Number(gameState.komi))
+            ? Number(gameState.komi)
+            : 7.5;
+
           // Update player names
           if (gameState.players) {
             this.blackName.textContent = gameState.players.black.name;
@@ -3273,6 +3347,8 @@ body {
 
           this.gameOverText.textContent = winner;
           this.gameOverOverlay.style.display = "flex";
+          if (this.resultModalText) this.resultModalText.textContent = winner;
+          if (this.resultModal) this.resultModal.style.display = "flex";
 
           console.log(
             "[UI] Game Over - Winner:",
@@ -3284,6 +3360,7 @@ body {
 
         hideGameOverDisplay() {
           this.gameOverOverlay.style.display = "none";
+          if (this.resultModal) this.resultModal.style.display = "none";
         }
 
         updateTurnIndicator(currentPlayer) {
@@ -3318,12 +3395,8 @@ body {
         }
 
         updateAnalysis(analysisData) {
-          // Skip analysis if game is finished
-          if (this.gameFinished) {
-            console.log("[UI] Game is finished - skipping analysis update");
-            return;
-          }
-
+          // Finished games still receive backlog/final analysis updates.
+          // Keep the game-over overlay, but update winrate, points, and MQI.
           console.log("[UI] Analysis result received:", analysisData);
           if (analysisData.moveQuality) {
             this.moveQualityState = analysisData.moveQuality;
@@ -3514,6 +3587,7 @@ body {
               scaleToActiveTotal: this.scoreBarMode === "territory",
               pointsOnlyGraph: false,
               hideCenterLine: this.scoreBarMode === "territory",
+              graphTotal: result.graphTotal,
             },
           );
 
@@ -3550,6 +3624,10 @@ body {
 
         buildAreaScoreResult(ownership, scoreLead) {
           const result = this.createEmptyScoreResult();
+          const komi = this.currentKomi ?? 7.5;
+          result.player_2.total = komi;
+          result.player_2.buckets[10] = komi;
+          result.unclaimedTotal = 0;
 
           for (const val of ownership) {
             const absVal = Math.abs(val);
@@ -3568,12 +3646,17 @@ body {
               player.buckets[10] += 1;
             } else if (absVal >= 0.4) {
               player.buckets[0] += 1;
+            } else {
+              result.unclaimedTotal += 1;
             }
           }
 
           result.player_1.total = +result.player_1.total.toFixed(3);
           result.player_2.total = +result.player_2.total.toFixed(3);
           this.adjustConfidenceForScoreLead(result, scoreLead);
+          result.graphTotal = result.player_1.buckets.reduce((sum, value) => sum + value, 0) +
+            result.player_2.buckets.reduce((sum, value) => sum + value, 0) +
+            result.unclaimedTotal;
           return result;
         }
 
@@ -3584,8 +3667,9 @@ body {
           const excludedOwnStones = { black: 0, white: 0 };
 
           // Territory scoring includes komi for White.
-          result.player_2.total = 7.5;
-          result.player_2.buckets[10] = 7.5;
+          const komi = this.currentKomi ?? 7.5;
+          result.player_2.total = komi;
+          result.player_2.buckets[10] = komi;
 
           const getStoneAt = (index) => {
             if (!boardState || !Number.isInteger(boardSize)) return 0;
