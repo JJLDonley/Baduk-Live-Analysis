@@ -2101,6 +2101,24 @@ body.score-bar-only .counting {
 body.score-bar-only .confidence-bar {
   margin-top: 0 !important;
 }
+body.score-label-only .counting,
+body.eval-label-only .winrate-bar-section {
+  height: auto !important;
+  margin-top: 0 !important;
+}
+body.score-label-only .confidence-labels,
+body.eval-label-only .winrate-bar-labels {
+  width: auto !important;
+  height: auto !important;
+}
+body.score-label-only .confidence-label,
+body.eval-label-only .winrate-bar-labels span {
+  position: static !important;
+  left: auto !important;
+  right: auto !important;
+  transform: none !important;
+  text-align: left !important;
+}
 body.eval-bar-only .winrate-bar-section {
   margin-top: 0 !important;
 }
@@ -2207,8 +2225,14 @@ body.eval-bar-only .winrate-bar {
             show(".move-quality-indicator", showLegend || showAllInfo);
           }
           const showAllScoreLabels = showScore && territoryRequested.size === 0 && areaRequested.size === 0 && !hasSideFilters;
-          const showAnyScoreLabel = showAllScoreLabels || showBlackPoints || showWhitePoints ||
-            showBlackInfluence || showWhiteInfluence || showUnclaimedPoints;
+          const scoreLabelCount = [
+            showAllScoreLabels || showBlackPoints,
+            showAllScoreLabels || showWhitePoints,
+            showAllScoreLabels || showBlackInfluence,
+            showAllScoreLabels || showWhiteInfluence,
+            showAllScoreLabels || showUnclaimedPoints,
+          ].filter(Boolean).length;
+          const showAnyScoreLabel = scoreLabelCount > 0;
           if (showScore || showBlackPoints || showWhitePoints || showBlackInfluence || showWhiteInfluence) {
             show("#black-points", showAllScoreLabels || showBlackPoints);
             show("#white-points", showAllScoreLabels || showWhitePoints);
@@ -2219,7 +2243,9 @@ body.eval-bar-only .winrate-bar {
             show("#confidence-bar", showAllScoreLabels || showScoreBar);
           }
           const showAllEval = showEval && evalRequested.size === 0 && !hasSideFilters;
-          const showAnyEvalLabel = showAllEval || showBlackWinrate || showWhiteWinrate;
+          const evalLabelCount = [showAllEval || showBlackWinrate, showAllEval || showWhiteWinrate]
+            .filter(Boolean).length;
+          const showAnyEvalLabel = evalLabelCount > 0;
           if (showEval || showBlackWinrate || showWhiteWinrate || showEvalBar) {
             show("#winrate-bar-black-label", showAllEval || showBlackWinrate);
             show("#winrate-bar-white-label", showAllEval || showWhiteWinrate);
@@ -2227,7 +2253,9 @@ body.eval-bar-only .winrate-bar {
             show("#winrate-bar", showAllEval || showEvalBar);
           }
           document.body.classList.toggle("score-bar-only", Boolean(showScoreBar && !showAnyScoreLabel));
+          document.body.classList.toggle("score-label-only", Boolean(scoreLabelCount === 1 && !showScoreBar));
           document.body.classList.toggle("eval-bar-only", Boolean(showEvalBar && !showAnyEvalLabel));
+          document.body.classList.toggle("eval-label-only", Boolean(evalLabelCount === 1 && !showEvalBar));
           if (showAnyIndex) {
             show(".mqi-player.black", showBlackIndex);
             show(".mqi-player.white", showWhiteIndex);

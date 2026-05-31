@@ -149,11 +149,20 @@ export function withElementVisibility(index: string, url: URL): string {
   const showAnyIndex = showBlackIndex || showWhiteIndex;
   const showAllScoreLabels = showScore && territoryRequested.size === 0 &&
     areaRequested.size === 0 && !hasSideFilters;
-  const showAnyScoreLabel = showAllScoreLabels || showBlackPoints ||
-    showWhitePoints || showBlackInfluence || showWhiteInfluence ||
-    showUnclaimedPoints;
+  const scoreLabelCount = [
+    showAllScoreLabels || showBlackPoints,
+    showAllScoreLabels || showWhitePoints,
+    showAllScoreLabels || showBlackInfluence,
+    showAllScoreLabels || showWhiteInfluence,
+    showAllScoreLabels || showUnclaimedPoints,
+  ].filter(Boolean).length;
+  const showAnyScoreLabel = scoreLabelCount > 0;
   const showAllEval = showEval && evalRequested.size === 0 && !hasSideFilters;
-  const showAnyEvalLabel = showAllEval || showBlackWinrate || showWhiteWinrate;
+  const evalLabelCount = [
+    showAllEval || showBlackWinrate,
+    showAllEval || showWhiteWinrate,
+  ].filter(Boolean).length;
+  const showAnyEvalLabel = evalLabelCount > 0;
 
   const hiddenSelectors = [
     !showBoard && ".goboard",
@@ -282,6 +291,26 @@ ${
         : ""
     }
 ${
+      scoreLabelCount === 1 && !showScoreBar
+        ? `
+.counting {
+  height: auto !important;
+}
+.confidence-labels {
+  width: auto !important;
+  height: auto !important;
+}
+.confidence-label {
+  position: static !important;
+  left: auto !important;
+  right: auto !important;
+  transform: none !important;
+  text-align: left !important;
+}
+`
+        : ""
+    }
+${
       showEvalBar && !showAnyEvalLabel
         ? `
 .winrate-bar-section {
@@ -289,6 +318,27 @@ ${
 }
 .winrate-bar {
   margin-top: 0 !important;
+}
+`
+        : ""
+    }
+${
+      evalLabelCount === 1 && !showEvalBar
+        ? `
+.winrate-bar-section {
+  height: auto !important;
+  margin-top: 0 !important;
+}
+.winrate-bar-labels {
+  width: auto !important;
+  height: auto !important;
+}
+.winrate-bar-labels span {
+  position: static !important;
+  left: auto !important;
+  right: auto !important;
+  transform: none !important;
+  text-align: left !important;
 }
 `
         : ""
