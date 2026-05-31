@@ -246,6 +246,8 @@ body {
 .container {
   align-items: flex-start !important;
   gap: 4px !important;
+  padding: 0 !important;
+  margin: 0 !important;
 }
 .information {
   ${showInfo ? "display: flex !important;" : ""}
@@ -282,7 +284,7 @@ ${
       showScoreBar && !showAnyScoreLabel
         ? `
 .counting {
-  height: 44px !important;
+  height: auto !important;
 }
 .confidence-bar {
   margin-top: 0 !important;
@@ -294,7 +296,9 @@ ${
       scoreLabelCount === 1 && !showScoreBar
         ? `
 .counting {
+  width: auto !important;
   height: auto !important;
+  margin: 0 !important;
 }
 .confidence-labels {
   width: auto !important;
@@ -326,8 +330,9 @@ ${
       evalLabelCount === 1 && !showEvalBar
         ? `
 .winrate-bar-section {
+  width: auto !important;
   height: auto !important;
-  margin-top: 0 !important;
+  margin: 0 !important;
 }
 .winrate-bar-labels {
   width: auto !important;
