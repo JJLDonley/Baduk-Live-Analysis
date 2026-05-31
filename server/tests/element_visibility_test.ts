@@ -59,6 +59,28 @@ Deno.test("withElementVisibility supports side-specific points and winrate", () 
   assertStringIncludes(filtered, "#winrate-bar");
 });
 
+Deno.test("getRequestedElements parses direct flags", () => {
+  const url = new URL("http://localhost/game/1?board&pie&l&r");
+  assertEquals([...getRequestedElements(url)].sort(), [
+    "board",
+    "legend",
+    "pie",
+    "result",
+  ]);
+});
+
+Deno.test("withElementVisibility supports short overlay params", () => {
+  const html = "<html><head></head><body></body></html>";
+  const url = new URL("http://localhost/game/1?board&t=bp,bar&p=b&pie&l");
+  const filtered = withElementVisibility(html, url);
+
+  assertStringIncludes(filtered, "server-element-filter");
+  assertStringIncludes(filtered, "#white-points");
+  assertStringIncludes(filtered, "#white-clock");
+  assertStringIncludes(filtered, ".mqi-player.white");
+  assertStringIncludes(filtered, "#unclaimed-points");
+});
+
 Deno.test("withElementVisibility does not inject when all elements are requested", () => {
   const html = "<html><head></head><body></body></html>";
   const url = new URL("http://localhost/game/1?element=all");

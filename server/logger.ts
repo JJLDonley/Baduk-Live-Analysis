@@ -23,12 +23,18 @@ export function setLoggerDebug(enabled: boolean): void {
   requestDebugEnabled = enabled;
 }
 
+function getDebugParam(url: URL): string | null {
+  return url.searchParams.get("db") ?? url.searchParams.get("debug");
+}
+
 export function enableLoggerFromUrl(url: URL): void {
-  requestDebugEnabled = isDebugValue(url.searchParams.get("debug"));
+  requestDebugEnabled = url.searchParams.has("db") ||
+    isDebugValue(getDebugParam(url));
 }
 
 export function startLoggerDebugSession(url: URL): boolean {
-  const enabled = isDebugValue(url.searchParams.get("debug"));
+  const enabled = url.searchParams.has("db") ||
+    isDebugValue(getDebugParam(url));
   if (enabled) debugSessions++;
   return enabled;
 }

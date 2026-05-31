@@ -847,8 +847,9 @@
     <script>
       (() => {
         const params = new URLSearchParams(window.location.search);
-        const debug = ["1", "true", "on", "yes", "debug"].includes(
-          (params.get("debug") || "").trim().toLowerCase(),
+        const debugValue = params.get("db") ?? params.get("debug") ?? "";
+        const debug = params.has("db") || ["1", "true", "on", "yes", "debug"].includes(
+          debugValue.trim().toLowerCase(),
         );
         const noop = () => {};
         window.logger = {
@@ -1790,19 +1791,18 @@
           // Game state variables
           this.gameFinished = false; // Track if game is over
 
-          // URL parameter detection for pattern feature
-          this.colorMode = this.getUrlParameter("c"); // 'black', 'white', 'quality', or null
-          this.topPosition = this.getUrlParameter("t") === "1";
+          // URL parameter detection for overlay features
           this.scoreBarMode = this.getScoreBarModeFromUrl(); // 'area' or 'territory'
           this.pillMode = this.getPillModeFromUrl(); // 'off', 'shape', 'points', or 'on' (default)
           this.effectMode = this.getEffectModeFromUrl();
           this.lastEffectKey = null;
 
-          // Review timer parameters
-          this.reviewTimeControl = this.getUrlParameter("tc"); // 'byo', 'can', 'fis', or null
-          this.reviewMainTime = this.getUrlParameter("mt"); // e.g., '40m', '1h', '30m'
-          this.reviewPeriod = this.getUrlParameter("pd"); // e.g., '30sx5', '5mx15'
-          this.reviewIncrement = this.getUrlParameter("in"); // e.g., '30s'
+          // Review clock parameters (?rc enables, ?rctc=byo|can|fis, ?rcmt=40m, ?rcpd=30sx5, ?rcin=30s)
+          this.reviewClockEnabled = this.hasUrlParameterAlias(["rc", "rct", "rctc", "rcmt", "rcin", "rcpd"]);
+          this.reviewTimeControl = this.getUrlParameterAlias(["rctc", "rct"]); // 'byo', 'can', 'fis', or null
+          this.reviewMainTime = this.getUrlParameterAlias(["rcmt"]); // e.g., '40m', '1h', '30m'
+          this.reviewPeriod = this.getUrlParameterAlias(["rcpd"]); // e.g., '30sx5', '5mx15'
+          this.reviewIncrement = this.getUrlParameterAlias(["rcin"]); // e.g., '30s'
 
           // Log time control settings
           if (this.reviewTimeControl) {
@@ -1832,15 +1832,6 @@
           this.reviewWhitePeriodsRemaining = 0;
           this.reviewBlackStonesRemaining = 0;
           this.reviewWhiteStonesRemaining = 0;
-
-          // Move shape-name to top position if requested
-          if (this.topPosition) {
-            this.moveShapeNameToTop();
-          }
-
-          logger.log(
-            `[UI] Color mode: ${this.colorMode}, Top position: ${this.topPosition}`,
-          );
 
           this.setupBoard();
           this.setupScoreBar();
@@ -1897,12 +1888,28 @@
           );
         }
 
+        getParamTokenSet(name) {
+          const value = this.getUrlParameter(name);
+          return this.parseElementList([value || ""]);
+        }
+
         getRequestedUiElements() {
           const urlParams = new URLSearchParams(window.location.search);
-          return this.parseElementList([
+          const requested = this.parseElementList([
             urlParams.get("element"),
             urlParams.get("elements"),
           ]);
+          for (const [param, element] of [
+            ["board", "board"],
+            ["pie", "pie"],
+            ["l", "legend"],
+            ["legend", "legend"],
+            ["r", "result"],
+            ["result", "result"],
+          ]) {
+            if (urlParams.has(param)) requested.add(element);
+          }
+          return requested;
         }
 
         getRequestedSideElements() {
@@ -1915,7 +1922,7 @@
 
         getScoreBarModeFromUrl() {
           const requested = this.getRequestedUiElements();
-          if (requested.has("territory")) return "territory";
+          if (this.hasUrlParameterAlias(["t"]) || requested.has("territory")) return "territory";
           return "area";
         }
 
@@ -1927,7 +1934,7 @@
           const raw = (hasPillParam ? value || "on" : hasPillElement ? "on" : "off").trim().toLowerCase();
           if (["off", "none", "0", "false"].includes(raw)) return "off";
           if (["on", "all", "1", "true", ""].includes(raw)) return "shape";
-          if (["points", "point", "score"].includes(raw)) return "points";
+          if (["p", "points", "point", "score"].includes(raw)) return "points";
           if (["shape", "shapes", "pattern"].includes(raw)) return "shape";
           return "shape";
         }
@@ -2003,12 +2010,16 @@
 
         applyElementVisibilityFromUrl() {
           const requested = this.getRequestedUiElements();
+          const territoryRequested = this.getParamTokenSet("t");
+          const areaRequested = this.getParamTokenSet("a");
+          const evalRequested = this.getParamTokenSet("e");
+          const playerRequested = this.getParamTokenSet("p");
           const sideRequested = this.getRequestedSideElements();
           const hasSideFilters = sideRequested.black.size > 0 ||
             sideRequested.white.size > 0;
-          if (
-            (requested.size === 0 && !hasSideFilters) || requested.has("all")
-          ) {
+          const hasParamForm = requested.size > 0 || hasSideFilters ||
+            this.hasUrlParameterAlias(["t", "a", "e", "p"]);
+          if (!hasParamForm || requested.has("all")) {
             return;
           }
 
@@ -2089,6 +2100,7 @@ body {
           };
 
           const has = (...names) => names.some((name) => requested.has(name));
+          const tokenHas = (set, ...names) => names.some((name) => set.has(name));
           const hasClock = (set) =>
             ["clock", "clocks"].some((name) => set.has(name));
           const hasPlayer = (set) =>
@@ -2104,45 +2116,52 @@ body {
           const hasWinrate = (set) =>
             ["winrate", "wr", "eval"].some((name) => set.has(name));
           const showBoard = has("board", "goban", "goboard");
-          const showArea = has("area", "score", "counting", "points");
-          const showTerritory = has("territory");
+          const showTerritory = territoryRequested.size > 0 || has("territory");
+          const showArea = areaRequested.size > 0 || has("area", "score", "counting", "points");
           const showScore = showArea || showTerritory;
-          const showShape = has("shape", "pattern", "shape-name");
           const showStatus = has("status", "game-status");
           const showPie = has("pie", "winrate", "wr");
           const showLegend = has("legend", "colors", "colour", "colours");
-          const showEval = has("eval", "bar", "winrate-bar");
+          const showEval = evalRequested.size > 0 || has("eval", "bar", "winrate-bar");
           const showResult = has("result", "results", "winner", "outcome", "game-over");
           const showAllInfo = has("information", "info");
 
-          const showBlackClock = showAllInfo ||
+          const showBlackClock = showAllInfo || tokenHas(playerRequested, "b", "bc") ||
             (hasSideFilters
               ? hasClock(sideRequested.black)
               : hasClock(requested));
-          const showWhiteClock = showAllInfo ||
+          const showWhiteClock = showAllInfo || tokenHas(playerRequested, "w", "wc") ||
             (hasSideFilters
               ? hasClock(sideRequested.white)
               : hasClock(requested));
-          const showBlackPlayer = showAllInfo ||
+          const showBlackPlayer = showAllInfo || tokenHas(playerRequested, "b", "bn") ||
             (hasSideFilters
               ? hasPlayer(sideRequested.black)
               : hasPlayer(requested));
-          const showWhitePlayer = showAllInfo ||
+          const showWhitePlayer = showAllInfo || tokenHas(playerRequested, "w", "wn") ||
             (hasSideFilters
               ? hasPlayer(sideRequested.white)
               : hasPlayer(requested));
-          const showBlackIndex = showAllInfo ||
+          const showBlackIndex = showAllInfo || tokenHas(playerRequested, "b", "bi") ||
             (hasSideFilters
               ? hasIndex(sideRequested.black)
               : hasIndex(requested));
-          const showWhiteIndex = showAllInfo ||
+          const showWhiteIndex = showAllInfo || tokenHas(playerRequested, "w", "wi") ||
             (hasSideFilters
               ? hasIndex(sideRequested.white)
               : hasIndex(requested));
-          const showBlackPoints = hasSideFilters && hasPoints(sideRequested.black);
-          const showWhitePoints = hasSideFilters && hasPoints(sideRequested.white);
-          const showBlackWinrate = hasSideFilters && hasWinrate(sideRequested.black);
-          const showWhiteWinrate = hasSideFilters && hasWinrate(sideRequested.white);
+          const showBlackPoints = tokenHas(territoryRequested, "bp") || tokenHas(areaRequested, "b") ||
+            (hasSideFilters && hasPoints(sideRequested.black));
+          const showWhitePoints = tokenHas(territoryRequested, "wp") || tokenHas(areaRequested, "w") ||
+            (hasSideFilters && hasPoints(sideRequested.white));
+          const showBlackInfluence = tokenHas(territoryRequested, "bi");
+          const showWhiteInfluence = tokenHas(territoryRequested, "wi");
+          const showUnclaimedPoints = tokenHas(areaRequested, "u") || (showArea && areaRequested.size === 0);
+          const showScoreBar = tokenHas(territoryRequested, "bar") || tokenHas(areaRequested, "bar") ||
+            (showScore && territoryRequested.size === 0 && areaRequested.size === 0);
+          const showBlackWinrate = tokenHas(evalRequested, "b") || (hasSideFilters && hasWinrate(sideRequested.black));
+          const showWhiteWinrate = tokenHas(evalRequested, "w") || (hasSideFilters && hasWinrate(sideRequested.white));
+          const showEvalBar = tokenHas(evalRequested, "bar") || (showEval && evalRequested.size === 0);
           const showInformation = showBlackClock || showWhiteClock ||
             showBlackPlayer || showWhitePlayer || showPie || showLegend ||
             showBlackWinrate || showWhiteWinrate || showAllInfo;
@@ -2152,10 +2171,10 @@ body {
           applyCompactIframeStyles();
 
           show(".goboard", showBoard);
-          show(".counting", showScore || showBlackPoints || showWhitePoints);
-          show(".winrate-bar-section", showEval || showBlackWinrate || showWhiteWinrate);
+          show(".counting", showScore || showBlackPoints || showWhitePoints || showBlackInfluence || showWhiteInfluence);
+          show(".winrate-bar-section", showEval || showBlackWinrate || showWhiteWinrate || showEvalBar);
           show(".game-status", showStatus);
-          show(".result-modal", showResult);
+          show(".result-modal", showResult && !showBoard);
           show(".information", showInformation);
           if (hasSideFilters && showInformation) {
             document.querySelectorAll(".information").forEach((element) => {
@@ -2175,15 +2194,20 @@ body {
             show("#pie, #pie-over, #pie-text", showPie || showAllInfo);
             show(".move-quality-indicator", showLegend || showAllInfo);
           }
-          if (showScore || showBlackPoints || showWhitePoints) {
-            show("#black-points", !hasSideFilters || showBlackPoints || showScore);
-            show("#white-points", !hasSideFilters || showWhitePoints || showScore);
-            show("#unclaimed-points, #confidence-bar", showScore);
+          if (showScore || showBlackPoints || showWhitePoints || showBlackInfluence || showWhiteInfluence) {
+            const showAllScoreLabels = showScore && territoryRequested.size === 0 && areaRequested.size === 0 && !hasSideFilters;
+            show("#black-points", showAllScoreLabels || showBlackPoints);
+            show("#white-points", showAllScoreLabels || showWhitePoints);
+            show("#black-influence", showAllScoreLabels || showBlackInfluence);
+            show("#white-influence", showAllScoreLabels || showWhiteInfluence);
+            show("#unclaimed-points", showAllScoreLabels || showUnclaimedPoints);
+            show("#confidence-bar", showAllScoreLabels || showScoreBar);
           }
-          if (showEval || showBlackWinrate || showWhiteWinrate) {
-            show("#winrate-bar-black-label", !hasSideFilters || showBlackWinrate || showEval);
-            show("#winrate-bar-white-label", !hasSideFilters || showWhiteWinrate || showEval);
-            show("#winrate-bar", showEval);
+          if (showEval || showBlackWinrate || showWhiteWinrate || showEvalBar) {
+            const showAllEval = showEval && evalRequested.size === 0 && !hasSideFilters;
+            show("#winrate-bar-black-label", showAllEval || showBlackWinrate);
+            show("#winrate-bar-white-label", showAllEval || showWhiteWinrate);
+            show("#winrate-bar", showAllEval || showEvalBar);
           }
           if (showAnyIndex) {
             show(".mqi-player.black", showBlackIndex);
@@ -2777,9 +2801,8 @@ body {
             this.reviewTimeControl,
           );
           if (this.isReviewMode) {
-            // In review mode, only show clocks if ALL time control parameters are present
-            // Hide clock if ANY parameter is null (except pd vs in - one must be present)
-            const hasAllParams = this.reviewTimeControl &&
+            // In review mode, only show clocks when the new review-clock params are complete.
+            const hasAllParams = this.reviewClockEnabled && this.reviewTimeControl &&
               this.reviewMainTime &&
               (this.reviewPeriod || this.reviewIncrement);
 
@@ -2791,10 +2814,11 @@ body {
               this.blackClock.style.display = "none";
               this.whiteClock.style.display = "none";
               logger.log("[UI] Review clocks hidden - missing params:", {
-                tc: this.reviewTimeControl,
-                mt: this.reviewMainTime,
-                pd: this.reviewPeriod,
-                in: this.reviewIncrement,
+                rc: this.reviewClockEnabled,
+                rctc: this.reviewTimeControl,
+                rcmt: this.reviewMainTime,
+                rcpd: this.reviewPeriod,
+                rcin: this.reviewIncrement,
               });
               // Stop countdown if incomplete time control
               this.stopReviewCountdown();

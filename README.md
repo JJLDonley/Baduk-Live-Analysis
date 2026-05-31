@@ -16,93 +16,109 @@ https://stream-ai.baduk.club/game/77081213
 https://stream-ai.baduk.club/review/123456
 ```
 
-## Modules
+## Overlay params
 
-Use URL params to show only the pieces you want. Names are case-insensitive.
+Use compact URL params to show only the pieces you want. Param layouts are
+left-aligned for overlay/iframe use.
+
+### Board
 
 ```txt
-?element=board
-?elements=player,clock,pie,index,board
+?board
 ```
 
-| Module      | Shows                     |
-| ----------- | ------------------------- |
-| `board`     | Go board                  |
-| `player`    | Player name + turn stone  |
-| `clock`     | Player clock              |
-| `pie`       | Winrate pie               |
-| `legend`    | Move-quality color legend |
-| `index`     | Move-quality counters     |
-| `shape`     | Shape/pattern name        |
-| `area`      | Area/counting chart       |
-| `territory` | Territory chart           |
-| `eval`      | Winrate/evaluation bar    |
-| `result`    | Game result modal (B+/W+) |
-| `status`    | Game status text          |
-
-## Side-specific iframe modules
-
-Use `black=` and/or `white=` for compact, transparent modules intended for
-iframes/overlays.
+### Territory bar
 
 ```txt
-?black=player
-?white=player
-?black=clock
-?white=index
-?black=points
-?white=winrate
-?black=player,index,clock,points,winrate
-?white=player,index,clock,points,winrate
+?t=bp,bi,wp,wi,bar
 ```
 
-Player modules include the turn indicator on the correct side:
+| Token | Shows           |
+| ----- | --------------- |
+| `bp`  | Black points    |
+| `bi`  | Black influence |
+| `wp`  | White points    |
+| `wi`  | White influence |
+| `bar` | Territory bar   |
+
+### Area bar
 
 ```txt
-?black=player  ->  Black Player [black stone]
-?white=player  ->  [white stone] White Player
+?a=b,w,u,bar
 ```
 
-You can combine global and side modules:
+| Token | Shows            |
+| ----- | ---------------- |
+| `b`   | Black points     |
+| `w`   | White points     |
+| `u`   | Unclaimed points |
+| `bar` | Area bar         |
+
+### Winrate/eval bar
 
 ```txt
-?elements=board,eval&black=player,clock&white=player,clock
+?e=b,w,bar
+```
+
+| Token | Shows         |
+| ----- | ------------- |
+| `b`   | Black percent |
+| `w`   | White percent |
+| `bar` | Eval bar      |
+
+### Player info
+
+```txt
+?p=b,bc,bn,bi,w,wc,wn,wi
+```
+
+| Token | Shows                                |
+| ----- | ------------------------------------ |
+| `b`   | All black info                       |
+| `bc`  | Black clock                          |
+| `bn`  | Black name + turn indicator stone    |
+| `bi`  | Black move-quality index             |
+| `w`   | All white info                       |
+| `wc`  | White clock                          |
+| `wn`  | White name + turn indicator stone    |
+| `wi`  | White move-quality index             |
+
+### Other modules
+
+```txt
+?effect      # blue move ring effect
+?effects     # same as ?effect
+?pill        # shape text pill
+?pills       # same as ?pill
+?pill=p      # points pill instead of shape text
+?pie         # winrate pie
+?l           # color legend
+?r           # result; appears centered on board when ?board is visible
+?db          # client/server debug logging
+?width=300   # scale visible output to 300px wide
+?width=300px
 ```
 
 ## Review clock params
 
-Review URLs can provide clock settings:
+Review URLs can provide clock settings with the `rc` prefix:
 
 ```txt
-/review/123456?t=1&tc=fis&mt=60m&in=10s
-/review/123456?t=1&tc=byo&mt=40m&pd=30sx5
-/review/123456?t=1&tc=can&mt=10m&pd=10mx15
+/review/123456?rc&rctc=fis&rcmt=60m&rcin=10s
+/review/123456?rc&rctc=byo&rcmt=40m&rcpd=30sx5
+/review/123456?rc&rctc=can&rcmt=10m&rcpd=10mx15
 ```
 
-- `t=1` enables review timer display
-- `tc=fis|byo|can`
-- `mt=60m`, `30s`, `1h`
-- Fischer needs `in=<time>`
-- Byo-yomi/Canadian need `pd=<time>x<count>`
+- `rc` enables review clock handling
+- `rctc=fis|byo|can` or `rct=fis|byo|can`
+- `rcmt=60m`, `30s`, `1h`
+- Fischer needs `rcin=<time>`
+- Byo-yomi/Canadian need `rcpd=<time>x<count>`
 
-## Other params
+## Legacy module params
 
-```txt
-?debug=1      # enable client/server debug logging
-?effect       # blue ring move effect
-?effect=on    # also works
-?width=300    # scale visible output to 300px wide
-?width=300px
-?c=black      # shape text color mode
-?c=white
-?c=quality
-?t=1          # move shape display near top / review clock mode
-?pill         # enable move pills
-?pill=points  # show point-loss pills only (loss >= 5)
-?pill=shape   # show shape pills only
-?pill=off     # disable move pills (default)
-?pills=...    # also works
-```
+The older `element=`, `elements=`, `black=`, and `white=` forms still work for
+backward compatibility, but new overlays should use the compact params above.
 
 ## Setup / operations
 

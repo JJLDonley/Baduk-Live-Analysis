@@ -1,10 +1,23 @@
 export function getRequestedElements(url: URL): Set<string> {
-  const values = [
+  const requested = parseElementList([
     url.searchParams.get("element"),
     url.searchParams.get("elements"),
-  ].filter((value): value is string => Boolean(value));
+  ].filter((value): value is string => Boolean(value)));
 
-  return parseElementList(values);
+  for (
+    const [param, element] of [
+      ["board", "board"],
+      ["pie", "pie"],
+      ["l", "legend"],
+      ["legend", "legend"],
+      ["r", "result"],
+      ["result", "result"],
+    ]
+  ) {
+    if (url.searchParams.has(param)) requested.add(element);
+  }
+
+  return requested;
 }
 
 export function getRequestedSideElements(
@@ -18,6 +31,10 @@ export function getRequestedSideElements(
       [url.searchParams.get("white")].filter(Boolean) as string[],
     ),
   };
+}
+
+function getParamTokenSet(url: URL, name: string): Set<string> {
+  return parseElementList([url.searchParams.get(name) ?? ""]);
 }
 
 function parseElementList(values: string[]): Set<string> {
@@ -62,59 +79,86 @@ function hasWinrate(requested: Set<string>): boolean {
 
 export function withElementVisibility(index: string, url: URL): string {
   const requested = getRequestedElements(url);
+  const territoryRequested = getParamTokenSet(url, "t");
+  const areaRequested = getParamTokenSet(url, "a");
+  const evalRequested = getParamTokenSet(url, "e");
+  const playerRequested = getParamTokenSet(url, "p");
   const sideRequested = getRequestedSideElements(url);
   const hasSideFilters = sideRequested.black.size > 0 ||
     sideRequested.white.size > 0;
-  if (
-    requested.size === 0 && !hasSideFilters ||
-    requested.has("all")
-  ) return index;
+  const hasShortParams = ["t", "a", "e", "p"].some((name) =>
+    url.searchParams.has(name)
+  );
+  if (requested.has("all")) return index;
+  if (requested.size === 0 && !hasSideFilters && !hasShortParams) return index;
 
   const has = (...names: string[]) => hasToken(requested, ...names);
+  const tokenHas = (set: Set<string>, ...names: string[]) =>
+    names.some((name) => set.has(name));
+
   const showBoard = has("board", "goban", "goboard");
-  const showArea = has("area", "score", "counting", "points");
-  const showTerritory = has("territory");
+  const showTerritory = territoryRequested.size > 0 || has("territory");
+  const showArea = areaRequested.size > 0 ||
+    has("area", "score", "counting", "points");
   const showScore = showArea || showTerritory;
-  const showShape = has("shape", "pattern", "shape-name");
   const showStatus = has("status", "game-status");
   const showGlobalClock = hasClock(requested);
   const showGlobalPlayer = hasPlayer(requested);
   const showPie = has("pie", "winrate", "wr");
   const showLegend = has("legend", "colors", "colour", "colours");
   const showGlobalIndex = hasIndex(requested);
-  const showEval = has("eval", "bar", "winrate-bar");
+  const showEval = evalRequested.size > 0 || has("eval", "bar", "winrate-bar");
   const showResult = has("result", "results", "winner", "outcome", "game-over");
   const showAllInfo = has("information", "info");
 
-  const showBlackClock = showAllInfo ||
+  const showBlackClock = showAllInfo || tokenHas(playerRequested, "b", "bc") ||
     (hasSideFilters ? hasClock(sideRequested.black) : showGlobalClock);
-  const showWhiteClock = showAllInfo ||
+  const showWhiteClock = showAllInfo || tokenHas(playerRequested, "w", "wc") ||
     (hasSideFilters ? hasClock(sideRequested.white) : showGlobalClock);
-  const showBlackPlayer = showAllInfo ||
+  const showBlackPlayer = showAllInfo || tokenHas(playerRequested, "b", "bn") ||
     (hasSideFilters ? hasPlayer(sideRequested.black) : showGlobalPlayer);
-  const showWhitePlayer = showAllInfo ||
+  const showWhitePlayer = showAllInfo || tokenHas(playerRequested, "w", "wn") ||
     (hasSideFilters ? hasPlayer(sideRequested.white) : showGlobalPlayer);
-  const showBlackIndex = showAllInfo ||
+  const showBlackIndex = showAllInfo || tokenHas(playerRequested, "b", "bi") ||
     (hasSideFilters ? hasIndex(sideRequested.black) : showGlobalIndex);
-  const showWhiteIndex = showAllInfo ||
+  const showWhiteIndex = showAllInfo || tokenHas(playerRequested, "w", "wi") ||
     (hasSideFilters ? hasIndex(sideRequested.white) : showGlobalIndex);
-  const showBlackPoints = hasSideFilters && hasPoints(sideRequested.black);
-  const showWhitePoints = hasSideFilters && hasPoints(sideRequested.white);
-  const showBlackWinrate = hasSideFilters && hasWinrate(sideRequested.black);
-  const showWhiteWinrate = hasSideFilters && hasWinrate(sideRequested.white);
+  const showBlackPoints = tokenHas(territoryRequested, "bp") ||
+    tokenHas(areaRequested, "b") ||
+    (hasSideFilters && hasPoints(sideRequested.black));
+  const showWhitePoints = tokenHas(territoryRequested, "wp") ||
+    tokenHas(areaRequested, "w") ||
+    (hasSideFilters && hasPoints(sideRequested.white));
+  const showBlackInfluence = tokenHas(territoryRequested, "bi");
+  const showWhiteInfluence = tokenHas(territoryRequested, "wi");
+  const showUnclaimedPoints = tokenHas(areaRequested, "u") ||
+    (showArea && areaRequested.size === 0);
+  const showScoreBar = tokenHas(territoryRequested, "bar") ||
+    tokenHas(areaRequested, "bar") ||
+    (showScore && territoryRequested.size === 0 && areaRequested.size === 0);
+  const showBlackWinrate = tokenHas(evalRequested, "b") ||
+    (hasSideFilters && hasWinrate(sideRequested.black));
+  const showWhiteWinrate = tokenHas(evalRequested, "w") ||
+    (hasSideFilters && hasWinrate(sideRequested.white));
+  const showEvalBar = tokenHas(evalRequested, "bar") ||
+    (showEval && evalRequested.size === 0);
 
   const showInfo = showBlackClock || showWhiteClock || showBlackPlayer ||
     showWhitePlayer || showPie || showLegend || showBlackWinrate ||
     showWhiteWinrate || showAllInfo;
   const showAnyIndex = showBlackIndex || showWhiteIndex;
+  const showAllScoreLabels = showScore && territoryRequested.size === 0 &&
+    areaRequested.size === 0 && !hasSideFilters;
+  const showAllEval = showEval && evalRequested.size === 0 && !hasSideFilters;
 
   const hiddenSelectors = [
     !showBoard && ".goboard",
-    !(showScore || showBlackPoints || showWhitePoints) && ".counting",
-    !(showEval || showBlackWinrate || showWhiteWinrate) &&
+    !(showScore || showBlackPoints || showWhitePoints || showBlackInfluence ||
+      showWhiteInfluence) && ".counting",
+    !(showEval || showBlackWinrate || showWhiteWinrate || showEvalBar) &&
     ".winrate-bar-section",
     !showStatus && ".game-status",
-    !showResult && ".result-modal",
+    (!showResult || showBoard) && ".result-modal",
     !showInfo && ".information",
     !showAnyIndex && ".move-quality-counter",
     showInfo && !showBlackClock && "#black-clock",
@@ -126,17 +170,37 @@ export function withElementVisibility(index: string, url: URL): string {
     showInfo && !showPie && !showLegend && !showAllInfo && ".winrate",
     showInfo && !showPie && !showAllInfo && "#pie, #pie-over, #pie-text",
     showInfo && !showLegend && !showAllInfo && ".move-quality-indicator",
-    (showScore || showBlackPoints || showWhitePoints) && hasSideFilters &&
-    !showBlackPoints && !showScore && "#black-points",
-    (showScore || showBlackPoints || showWhitePoints) && hasSideFilters &&
-    !showWhitePoints && !showScore && "#white-points",
-    (showBlackPoints || showWhitePoints) && !showScore &&
+    (showScore || showBlackPoints || showWhitePoints || showBlackInfluence ||
+      showWhiteInfluence) &&
+    !(showAllScoreLabels || showBlackPoints) && "#black-points",
+    (showScore || showBlackPoints || showWhitePoints || showBlackInfluence ||
+      showWhiteInfluence) &&
+    !(showAllScoreLabels || showWhitePoints) && "#white-points",
+    (showScore || showBlackPoints || showWhitePoints || showBlackInfluence ||
+      showWhiteInfluence) &&
+    !(showAllScoreLabels || showBlackInfluence) && "#black-influence",
+    (showScore || showBlackPoints || showWhitePoints || showBlackInfluence ||
+      showWhiteInfluence) &&
+    !(showAllScoreLabels || showWhiteInfluence) && "#white-influence",
+    (showScore || showBlackPoints || showWhitePoints || showBlackInfluence ||
+      showWhiteInfluence) &&
+    !(showAllScoreLabels || showUnclaimedPoints) &&
+    !(showAllScoreLabels || showScoreBar) &&
     "#unclaimed-points, #confidence-bar",
-    (showEval || showBlackWinrate || showWhiteWinrate) && hasSideFilters &&
-    !showBlackWinrate && !showEval && "#winrate-bar-black-label",
-    (showEval || showBlackWinrate || showWhiteWinrate) && hasSideFilters &&
-    !showWhiteWinrate && !showEval && "#winrate-bar-white-label",
-    (showBlackWinrate || showWhiteWinrate) && !showEval && "#winrate-bar",
+    (showScore || showBlackPoints || showWhitePoints || showBlackInfluence ||
+      showWhiteInfluence) &&
+    !(showAllScoreLabels || showUnclaimedPoints) &&
+    (showAllScoreLabels || showScoreBar) && "#unclaimed-points",
+    (showScore || showBlackPoints || showWhitePoints || showBlackInfluence ||
+      showWhiteInfluence) &&
+    (showAllScoreLabels || showUnclaimedPoints) &&
+    !(showAllScoreLabels || showScoreBar) && "#confidence-bar",
+    (showEval || showBlackWinrate || showWhiteWinrate || showEvalBar) &&
+    !(showAllEval || showBlackWinrate) && "#winrate-bar-black-label",
+    (showEval || showBlackWinrate || showWhiteWinrate || showEvalBar) &&
+    !(showAllEval || showWhiteWinrate) && "#winrate-bar-white-label",
+    (showEval || showBlackWinrate || showWhiteWinrate || showEvalBar) &&
+    !(showAllEval || showEvalBar) && "#winrate-bar",
     showAnyIndex && !showBlackIndex && ".mqi-player.black",
     showAnyIndex && !showWhiteIndex && ".mqi-player.white",
   ].filter((selector): selector is string => Boolean(selector));
@@ -154,7 +218,7 @@ body {
   align-items: flex-start !important;
 }
 `;
-  const compactCss = requested.size > 0 || hasSideFilters
+  const compactCss = requested.size > 0 || hasSideFilters || hasShortParams
     ? `
 body {
   background: transparent !important;
