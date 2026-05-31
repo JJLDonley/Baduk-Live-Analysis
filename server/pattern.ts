@@ -1,3 +1,4 @@
+import { logger } from "./logger.ts";
 // Use dynamic import for CommonJS compatibility
 const boardmatcherModule = await import("@sabaki/boardmatcher");
 const BoardMatcher = boardmatcherModule.default || boardmatcherModule;
@@ -160,7 +161,7 @@ export class PatternMatchingService {
         timestamp: Date.now(),
       };
     } catch (error) {
-      console.error(`[PatternMatching] Error naming move:`, error);
+      logger.error(`[PatternMatching] Error naming move:`, error);
       return {
         id: request.id,
         moveName: null,
@@ -224,7 +225,7 @@ export class PatternMatchingService {
 
       return patterns;
     } catch (error) {
-      console.error(`[PatternMatching] Error finding patterns:`, error);
+      logger.error(`[PatternMatching] Error finding patterns:`, error);
       return [];
     }
   }

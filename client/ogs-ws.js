@@ -1,6 +1,13 @@
 // Version: 3.1 - Enhanced UI Integration with Event-Driven Architecture + AI Analysis WebSocket Manager
+const logger = globalThis.logger ?? {
+  enabled: false,
+  log: () => {},
+  info: () => {},
+  warn: () => {},
+  error: () => {},
+};
 const OGS_WS_VERSION = 3.1;
-console.log(`[OGS-WS] Version ${OGS_WS_VERSION} loaded`);
+logger.log(`[OGS-WS] Version ${OGS_WS_VERSION} loaded`);
 
 // Board State Controller Class
 class BoardStateController {
@@ -57,57 +64,57 @@ class BoardStateController {
         }
 
         if (!success) {
-          console.warn(
+          logger.warn(
             `[BoardController] Failed to play move: ${move.move} (${move.color})`,
           );
         }
       }
     });
     // Only log final summary, not every step
-    // console.log(`[BoardController] Replayed ${moves.length} moves with ${captureEvents} capture events`);
-    // console.log(`[BoardController] Final captures: Black=${this.captures.black}, White=${this.captures.white}`);
+    // logger.log(`[BoardController] Replayed ${moves.length} moves with ${captureEvents} capture events`);
+    // logger.log(`[BoardController] Final captures: Black=${this.captures.black}, White=${this.captures.white}`);
   }
 
   // Place handicap stones from OGS initial_state format
   placeHandicapStones(initialState) {
     const letters = "abcdefghjklmnopqrst";
-    console.log(
+    logger.log(
       `[BoardController] placeHandicapStones called with:`,
       initialState,
     );
 
     // Place black handicap stones
     if (initialState.black) {
-      console.log(
+      logger.log(
         `[BoardController] Parsing black stones from: "${initialState.black}"`,
       );
       const blackStones = this.parseInitialStateString(initialState.black);
-      console.log(`[BoardController] Parsed black stones:`, blackStones);
+      logger.log(`[BoardController] Parsed black stones:`, blackStones);
       blackStones.forEach((coords) => {
-        console.log(
+        logger.log(
           `[BoardController] Placing black stone at [${coords.x}, ${coords.y}]`,
         );
         this.board[coords.x][coords.y] = 1; // 1 = black stone
       });
-      console.log(
+      logger.log(
         `[BoardController] Placed ${blackStones.length} black handicap stones`,
       );
     }
 
     // Place white handicap stones (rare, but possible)
     if (initialState.white) {
-      console.log(
+      logger.log(
         `[BoardController] Parsing white stones from: "${initialState.white}"`,
       );
       const whiteStones = this.parseInitialStateString(initialState.white);
-      console.log(`[BoardController] Parsed white stones:`, whiteStones);
+      logger.log(`[BoardController] Parsed white stones:`, whiteStones);
       whiteStones.forEach((coords) => {
-        console.log(
+        logger.log(
           `[BoardController] Placing white stone at [${coords.x}, ${coords.y}]`,
         );
         this.board[coords.x][coords.y] = 2; // 2 = white stone
       });
-      console.log(
+      logger.log(
         `[BoardController] Placed ${whiteStones.length} white handicap stones`,
       );
     }
@@ -118,7 +125,7 @@ class BoardStateController {
     const coordinates = [];
     const letters = "abcdefghijklmnopqrs";
 
-    console.log(
+    logger.log(
       `[BoardController] parseInitialStateString input: "${stateString}"`,
     );
     for (let i = 0; i < stateString.length; i += 2) {
@@ -131,13 +138,13 @@ class BoardStateController {
           coordinates.push({ x: x_index, y: y_index });
           const x_letter = letters[x_index];
           const y_number = 19 - y_index;
-          console.log(
+          logger.log(
             `[BoardController] Handicap stone at [${x_index}, ${y_index}] = ${x_letter}${y_number} from "${char1}${char2}"`,
           );
         }
       }
     }
-    console.log(
+    logger.log(
       `[BoardController] Parsed ${coordinates.length} handicap stone positions`,
     );
     return coordinates;
@@ -419,15 +426,17 @@ class AIAnalysisManager {
   // Connect to AI analysis server
   connect() {
     if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
-      console.log(`[AIAnalysis] Already connected`);
+      logger.log(`[AIAnalysis] Already connected`);
       return;
     }
 
-    const contextQuery = this.context
-      ? `?type=${encodeURIComponent(this.context.type)}&id=${
-        encodeURIComponent(this.context.id)
-      }`
-      : "";
+    const queryParams = new URLSearchParams();
+    if (this.context) {
+      queryParams.set("type", this.context.type);
+      queryParams.set("id", this.context.id);
+    }
+    if (globalThis.logger?.enabled) queryParams.set("debug", "1");
+    const contextQuery = queryParams.toString() ? `?${queryParams}` : "";
     const pageProtocol = globalThis.location?.protocol;
     const isHttpsPage = pageProtocol === "https:";
     const isDefaultAiEndpoint =
@@ -438,13 +447,13 @@ class AIAnalysisManager {
       : `${
         isHttpsPage ? "wss" : "ws"
       }://${this.hostname}:${this.port}${contextQuery}`;
-    console.log(`[AIAnalysis] Connecting to ${wsUrl}`);
+    logger.log(`[AIAnalysis] Connecting to ${wsUrl}`);
 
     try {
       this.websocket = new WebSocket(wsUrl);
 
       this.websocket.onopen = () => {
-        console.log(`[AIAnalysis] Connected to AI server`);
+        logger.log(`[AIAnalysis] Connected to AI server`);
         this.connected = true;
         this.reconnectAttempts = 0;
         if (this.context) {
@@ -460,16 +469,16 @@ class AIAnalysisManager {
       this.websocket.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          console.log(`[AIAnalysis] Received analysis result:`, data);
+          logger.log(`[AIAnalysis] Received analysis result:`, data);
           this.handleAnalysisResult(data);
         } catch (error) {
-          console.error(`[AIAnalysis] Error parsing response:`, error);
+          logger.error(`[AIAnalysis] Error parsing response:`, error);
           this.callEventHandler("onError", { type: "parse_error", error });
         }
       };
 
       this.websocket.onclose = (event) => {
-        console.log(
+        logger.log(
           `[AIAnalysis] Connection closed:`,
           event.code,
           event.reason,
@@ -480,17 +489,17 @@ class AIAnalysisManager {
         if (this.reconnectAttempts < this.maxReconnectAttempts) {
           this.scheduleReconnect();
         } else {
-          console.log(`[AIAnalysis] Max reconnect attempts reached`);
+          logger.log(`[AIAnalysis] Max reconnect attempts reached`);
           this.callEventHandler("onError", { type: "connection_failed" });
         }
       };
 
       this.websocket.onerror = (error) => {
-        console.error(`[AIAnalysis] WebSocket error:`, error);
+        logger.error(`[AIAnalysis] WebSocket error:`, error);
         this.callEventHandler("onError", { type: "websocket_error", error });
       };
     } catch (error) {
-      console.error(`[AIAnalysis] Failed to create WebSocket:`, error);
+      logger.error(`[AIAnalysis] Failed to create WebSocket:`, error);
       this.callEventHandler("onError", { type: "connection_error", error });
     }
   }
@@ -498,7 +507,7 @@ class AIAnalysisManager {
   // Schedule reconnection attempt
   scheduleReconnect() {
     this.reconnectAttempts++;
-    console.log(
+    logger.log(
       `[AIAnalysis] Scheduling reconnect attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts}`,
     );
 
@@ -517,7 +526,7 @@ class AIAnalysisManager {
     }
     this.connected = false;
     this.analysisQueue.clear();
-    console.log(`[AIAnalysis] Disconnected from AI server`);
+    logger.log(`[AIAnalysis] Disconnected from AI server`);
   }
 
   sendCommand(command, payload = {}, requestId = null) {
@@ -569,7 +578,7 @@ class AIAnalysisManager {
   // Send analysis request
   requestAnalysis(gameState, gameType = "game", moveNumber = null) {
     if (!this.connected || !this.websocket) {
-      console.log(`[AIAnalysis] Not connected - cannot send analysis request`);
+      logger.log(`[AIAnalysis] Not connected - cannot send analysis request`);
       return false;
     }
 
@@ -585,12 +594,12 @@ class AIAnalysisManager {
     );
 
     if (!analysisRequest) {
-      console.error(`[AIAnalysis] Failed to format analysis request`);
+      logger.error(`[AIAnalysis] Failed to format analysis request`);
       return false;
     }
 
     try {
-      console.log(
+      logger.log(
         `[AIAnalysis] Sending analysis request command:`,
         analysisRequest,
       );
@@ -621,7 +630,7 @@ class AIAnalysisManager {
 
       return true;
     } catch (error) {
-      console.error(`[AIAnalysis] Error sending analysis request:`, error);
+      logger.error(`[AIAnalysis] Error sending analysis request:`, error);
       this.callEventHandler("onError", { type: "send_error", error });
       return false;
     }
@@ -630,7 +639,7 @@ class AIAnalysisManager {
   // Format analysis request from game state
   formatAnalysisRequest(gameState, gameType, moveNumber) {
     if (!gameState) {
-      console.error(`[AIAnalysis] Invalid game state provided`);
+      logger.error(`[AIAnalysis] Invalid game state provided`);
       return null;
     }
 
@@ -681,22 +690,22 @@ class AIAnalysisManager {
   getInitialStones(gameState) {
     const initialStones = [];
 
-    console.log(
+    logger.log(
       `[AIAnalysis] getInitialStones called with gameState:`,
       gameState,
     );
-    console.log(`[AIAnalysis] gameState.initialState:`, gameState.initialState);
+    logger.log(`[AIAnalysis] gameState.initialState:`, gameState.initialState);
 
     if (gameState.initialState) {
       // Parse black handicap stones
       if (gameState.initialState.black) {
-        console.log(
+        logger.log(
           `[AIAnalysis] Parsing black handicap stones from: "${gameState.initialState.black}"`,
         );
         const blackStones = this.parseInitialState(
           gameState.initialState.black,
         );
-        console.log(`[AIAnalysis] Parsed black stones:`, blackStones);
+        logger.log(`[AIAnalysis] Parsed black stones:`, blackStones);
         blackStones.forEach((stone) => {
           initialStones.push(["black", stone]);
         });
@@ -704,22 +713,22 @@ class AIAnalysisManager {
 
       // Parse white handicap stones (rare, but possible)
       if (gameState.initialState.white) {
-        console.log(
+        logger.log(
           `[AIAnalysis] Parsing white handicap stones from: "${gameState.initialState.white}"`,
         );
         const whiteStones = this.parseInitialState(
           gameState.initialState.white,
         );
-        console.log(`[AIAnalysis] Parsed white stones:`, whiteStones);
+        logger.log(`[AIAnalysis] Parsed white stones:`, whiteStones);
         whiteStones.forEach((stone) => {
           initialStones.push(["white", stone]);
         });
       }
     } else {
-      console.log(`[AIAnalysis] No initialState found in gameState`);
+      logger.log(`[AIAnalysis] No initialState found in gameState`);
     }
 
-    console.log(
+    logger.log(
       `[AIAnalysis] Returning ${initialStones.length} initial stones:`,
       initialStones,
     );
@@ -730,7 +739,7 @@ class AIAnalysisManager {
   parseInitialState(stateString) {
     const coordinates = [];
     const letters = "abcdefghijklmnopqrs";
-    console.log(`[AIAnalysis] parseInitialState input: "${stateString}"`);
+    logger.log(`[AIAnalysis] parseInitialState input: "${stateString}"`);
     for (let i = 0; i < stateString.length; i += 2) {
       if (i + 1 < stateString.length) {
         const char1 = stateString[i];
@@ -742,13 +751,13 @@ class AIAnalysisManager {
           const y_number = 19 - y_index;
           const coord = `${x_letter}${y_number}`;
           coordinates.push(coord);
-          console.log(
+          logger.log(
             `[AIAnalysis] Parsed "${char1}${char2}" -> [${x_index},${y_index}] -> ${coord}`,
           );
         }
       }
     }
-    console.log(`[AIAnalysis] Final coordinates:`, coordinates);
+    logger.log(`[AIAnalysis] Final coordinates:`, coordinates);
     return coordinates;
   }
 
@@ -809,7 +818,7 @@ class AIAnalysisManager {
     }
 
     if (!data.id) {
-      console.error(`[AIAnalysis] Received result without ID`);
+      logger.error(`[AIAnalysis] Received result without ID`);
       return;
     }
 
@@ -830,23 +839,7 @@ class AIAnalysisManager {
 
   // Handle pattern match result
   handlePatternMatchResult(data) {
-    console.log(`[AIAnalysis] Received pattern match:`, data);
-
-    // Update the shape-name div with the pattern name
-    const shapeNameElement = document.getElementById("shape-name");
-    if (shapeNameElement) {
-      const moveName = data.moveName || "No pattern found";
-      shapeNameElement.textContent = moveName;
-
-      // Add visual feedback for pattern recognition
-      if (data.moveName) {
-        shapeNameElement.style.color = "#4CAF50"; // Green for recognized pattern
-        shapeNameElement.style.fontWeight = "bold";
-      } else {
-        shapeNameElement.style.color = "#666"; // Gray for no pattern
-        shapeNameElement.style.fontWeight = "normal";
-      }
-    }
+    logger.log(`[AIAnalysis] Received pattern match:`, data);
 
     // Call pattern match handler if registered
     this.callEventHandler("onPatternMatch", data);
@@ -862,7 +855,7 @@ class AIAnalysisManager {
         `settings/${Date.now()}`,
       );
     }
-    // console.log(`[AIAnalysis] Max visits set to ${visits}`);
+    // logger.log(`[AIAnalysis] Max visits set to ${visits}`);
   }
 
   // Get connection status
@@ -878,7 +871,7 @@ class AIAnalysisManager {
   // Clear pending analyses
   clearPendingAnalyses() {
     this.analysisQueue.clear();
-    console.log(`[AIAnalysis] Cleared pending analyses`);
+    logger.log(`[AIAnalysis] Cleared pending analyses`);
   }
 
   // Event handler management
@@ -906,7 +899,7 @@ class AIAnalysisManager {
         handler(data);
       }
     } catch (error) {
-      console.error(`[AIAnalysis] Error in ${handlerName}:`, error);
+      logger.error(`[AIAnalysis] Error in ${handlerName}:`, error);
     }
   }
 }
@@ -963,7 +956,7 @@ class GameEngineWrapper {
         try {
           handler(...args);
         } catch (error) {
-          console.error(`Error in event handler for ${eventName}:`, error);
+          logger.error(`Error in event handler for ${eventName}:`, error);
         }
       });
     }
@@ -973,7 +966,7 @@ class GameEngineWrapper {
   setupAIAnalysisHandlers() {
     // Set up analysis result handler
     this.aiAnalysis.setAnalysisResultHandler((result) => {
-      console.log(`[GameEngine] Received analysis result:`, result);
+      logger.log(`[GameEngine] Received analysis result:`, result);
 
       // Restore latest server-tracked game/review state first, then analysis.
       if (result.gameState) {
@@ -1001,7 +994,7 @@ class GameEngineWrapper {
 
     // Set up pattern match handler
     this.aiAnalysis.setPatternMatchHandler((patternData) => {
-      console.log(`[GameEngine] Received pattern match:`, patternData);
+      logger.log(`[GameEngine] Received pattern match:`, patternData);
 
       // Update UI with pattern information
       if (globalThis.uiManager) {
@@ -1013,7 +1006,7 @@ class GameEngineWrapper {
 
     // Set up connection status handler
     this.aiAnalysis.setConnectionStatusHandler((status) => {
-      console.log(`[GameEngine] AI connection status:`, status);
+      logger.log(`[GameEngine] AI connection status:`, status);
       if (status.connected) {
         this.requestCurrentPositionAnalysis("ai-connected");
       }
@@ -1022,7 +1015,7 @@ class GameEngineWrapper {
 
     // Set up error handler
     this.aiAnalysis.setErrorHandler((error) => {
-      console.error(`[GameEngine] AI analysis error:`, error);
+      logger.error(`[GameEngine] AI analysis error:`, error);
       this.callEventHandler("aiError", error);
     });
   }
@@ -1035,7 +1028,7 @@ class GameEngineWrapper {
     if (autoConnect) {
       const hostname = globalThis.AIHostname || location.hostname;
       const port = globalThis.AIPort || 8081;
-      console.log(
+      logger.log(
         `[GameEngine] Auto-connecting to AI analysis server at ${hostname}:${port}`,
       );
       this.connectToAI(hostname, port);
@@ -1045,7 +1038,7 @@ class GameEngineWrapper {
         this.setAIMaxVisits(globalThis.AIMaxVisits);
       }
     } else {
-      console.log(
+      logger.log(
         `[GameEngine] AI auto-connect disabled. Use connectToAI() to connect manually.`,
       );
     }
@@ -1053,7 +1046,7 @@ class GameEngineWrapper {
 
   // Connect to AI analysis server
   connectToAI(hostname = location.hostname, port = 8081) {
-    console.log(`[GameEngine] Connecting to AI server at ${hostname}:${port}`);
+    logger.log(`[GameEngine] Connecting to AI server at ${hostname}:${port}`);
     this.aiAnalysis.hostname = hostname;
     this.aiAnalysis.port = port;
     this.aiAnalysis.connect();
@@ -1068,11 +1061,11 @@ class GameEngineWrapper {
     const gameState = this.getCurrentState();
     const moveNumber = gameState?.moves ? gameState.moves.length : 0;
     if (moveNumber === 0) {
-      console.log(`[GameEngine] Skipping initial analysis for empty board`);
+      logger.log(`[GameEngine] Skipping initial analysis for empty board`);
       return false;
     }
     if (!this.aiAnalysis.isConnected()) {
-      console.log(
+      logger.log(
         `[GameEngine] AI not connected yet; will analyze current position after connect`,
       );
       return false;
@@ -1080,12 +1073,12 @@ class GameEngineWrapper {
 
     const key = `${this.type}/${this.id}/${moveNumber}`;
     if (this.lastAutoAnalysisKey === key) {
-      console.log(`[GameEngine] Current position already requested: ${key}`);
+      logger.log(`[GameEngine] Current position already requested: ${key}`);
       return false;
     }
 
     this.lastAutoAnalysisKey = key;
-    console.log(
+    logger.log(
       `[GameEngine] Requesting ${reason} analysis for move ${moveNumber}`,
     );
     return this.requestAnalysis(moveNumber);
@@ -1095,7 +1088,7 @@ class GameEngineWrapper {
   requestAnalysis(moveNumber = null) {
     const gameState = this.getCurrentState();
     if (!gameState) {
-      console.log(`[GameEngine] No game state available for analysis`);
+      logger.log(`[GameEngine] No game state available for analysis`);
       return false;
     }
 
@@ -1129,7 +1122,7 @@ class GameEngineWrapper {
   setupGameListeners() {
     // Game data event
     this.ogsSocket.on(`game/${this.id}/gamedata`, (data) => {
-      console.log(`[GameEngine] Game data received:`, data);
+      logger.log(`[GameEngine] Game data received:`, data);
 
       // Store raw game data for inspection
       globalThis.lastGameData = data;
@@ -1143,7 +1136,7 @@ class GameEngineWrapper {
       }
 
       if (data.phase === "finished") {
-        console.log(`[GameEngine] Game finished`);
+        logger.log(`[GameEngine] Game finished`);
         this.updateGamePhase("finished");
         this.callEventHandler("phase", "finished");
         this.ogsSocket.send(["game/disconnect", { game_id: this.id }]);
@@ -1152,10 +1145,10 @@ class GameEngineWrapper {
 
     // Move event
     this.ogsSocket.on(`game/${this.id}/move`, (data) => {
-      console.log(`[GameEngine] Move received:`, data);
+      logger.log(`[GameEngine] Move received:`, data);
       const parsedMove = this.addGameMove(data);
       if (parsedMove) {
-        console.log(`[GameEngine] Parsed move:`, parsedMove);
+        logger.log(`[GameEngine] Parsed move:`, parsedMove);
         this.callEventHandler("move", parsedMove);
 
         // Note: UI update is handled in addGameMove() with correct board state
@@ -1168,7 +1161,7 @@ class GameEngineWrapper {
 
     // Clock event
     this.ogsSocket.on(`game/${this.id}/clock`, (data) => {
-      console.log(`[GameEngine] Clock update:`, data);
+      logger.log(`[GameEngine] Clock update:`, data);
       this.updateGameClock(data);
       this.callEventHandler("clock", this.currentGame.clock);
 
@@ -1180,7 +1173,7 @@ class GameEngineWrapper {
 
     // Phase event
     this.ogsSocket.on(`game/${this.id}/phase`, (data) => {
-      console.log(`[GameEngine] Phase update:`, data);
+      logger.log(`[GameEngine] Phase update:`, data);
       this.updateGamePhase(data);
       this.callEventHandler("phase", data);
 
@@ -1199,7 +1192,7 @@ class GameEngineWrapper {
   setupReviewListeners() {
     // Review full state event
     this.ogsSocket.on(`review/${this.id}/full_state`, (data) => {
-      console.log(`[GameEngine] Review full state received:`, data);
+      logger.log(`[GameEngine] Review full state received:`, data);
 
       // Live-game reviews include gamedata.game_id. They are allowed here and
       // handled the same as demo-board reviews.
@@ -1211,12 +1204,12 @@ class GameEngineWrapper {
         globalThis.uiManager.updateUI(this.currentReview);
       }
 
-      console.log(`[GameEngine] Review data processed successfully`);
+      logger.log(`[GameEngine] Review data processed successfully`);
     });
 
     // Review move event
     this.ogsSocket.on(`review/${this.id}/r`, (data) => {
-      console.log(`[GameEngine] Review move:`, data);
+      logger.log(`[GameEngine] Review move:`, data);
 
       if (data.m === undefined || data.m === null) {
         return;
@@ -1234,13 +1227,13 @@ class GameEngineWrapper {
   // Connect to the game/review
   connect() {
     if (this.type === "game") {
-      console.log(`[GameEngine] Connecting to game ${this.id}`);
+      logger.log(`[GameEngine] Connecting to game ${this.id}`);
       this.ogsSocket.emit("game/connect", {
         game_id: this.id,
         chat: false,
       });
     } else if (this.type === "review") {
-      console.log(`[GameEngine] Connecting to review ${this.id}`);
+      logger.log(`[GameEngine] Connecting to review ${this.id}`);
       this.ogsSocket.emit("review/connect", {
         review_id: this.id,
         chat: false,
@@ -1255,7 +1248,7 @@ class GameEngineWrapper {
 
     // Determine starting color based on initial player
     const startingColor = initialPlayer === "white" ? "white" : "black";
-    console.log(
+    logger.log(
       `[GameEngine] parseGameMoves: initialPlayer=${initialPlayer}, startingColor=${startingColor}, moves.length=${moves.length}`,
     );
 
@@ -1288,7 +1281,7 @@ class GameEngineWrapper {
 
       // Debug first few moves only
       if (index < 5) {
-        console.log(
+        logger.log(
           `[GameEngine] Move ${index + 1}: ${color} plays ${
             parsedMoves[index].move
           }`,
@@ -1326,7 +1319,7 @@ class GameEngineWrapper {
   parseReviewMoves(moveString) {
     // Empty string = empty board (no moves)
     if (!moveString || moveString.trim() === "") {
-      console.log(`[GameEngine] Empty move string - returning empty board`);
+      logger.log(`[GameEngine] Empty move string - returning empty board`);
       return [];
     }
 
@@ -1427,24 +1420,24 @@ class GameEngineWrapper {
   // Initialize game data
   initializeGame(gameData) {
     // Simple alert to confirm function is called
-    console.log(`[GameEngine] === INITIALIZE GAME CALLED ===`);
-    console.log(`[GameEngine] Game ID: ${gameData.game_id}`);
-    console.log(`[GameEngine] Game name: ${gameData.game_name}`);
-    console.log(`[GameEngine] Handicap: ${gameData.handicap}`);
-    console.log(`[GameEngine] Initial player: ${gameData.initial_player}`);
-    console.log(`[GameEngine] Initial state:`, gameData.initial_state);
+    logger.log(`[GameEngine] === INITIALIZE GAME CALLED ===`);
+    logger.log(`[GameEngine] Game ID: ${gameData.game_id}`);
+    logger.log(`[GameEngine] Game name: ${gameData.game_name}`);
+    logger.log(`[GameEngine] Handicap: ${gameData.handicap}`);
+    logger.log(`[GameEngine] Initial player: ${gameData.initial_player}`);
+    logger.log(`[GameEngine] Initial state:`, gameData.initial_state);
 
     // Force a visible log to confirm execution
     if (gameData.handicap > 0) {
-      console.warn(
+      logger.warn(
         `[GameEngine] HANDICAP GAME DETECTED: ${gameData.handicap} stones`,
       );
     }
 
     // Get initial player (important for handicap games)
     const initialPlayer = gameData.initial_player || "black";
-    console.log(`[GameEngine] Initial player extracted: ${initialPlayer}`);
-    console.log(
+    logger.log(`[GameEngine] Initial player extracted: ${initialPlayer}`);
+    logger.log(
       `[GameEngine] Handicap info: handicap=${gameData.handicap}, initial_state=`,
       gameData.initial_state,
     );
@@ -1494,17 +1487,17 @@ class GameEngineWrapper {
       initialState: gameData.initial_state || null,
     };
 
-    console.log(`[GameEngine] Game ${this.id} initialized:`, this.currentGame);
+    logger.log(`[GameEngine] Game ${this.id} initialized:`, this.currentGame);
 
     // Log handicap information
     if (this.currentGame.handicap > 0) {
-      console.log(
+      logger.log(
         `[GameEngine] Handicap game: ${this.currentGame.handicap} stones, ${this.currentGame.initialPlayer} plays first`,
       );
     }
 
     // Debug: Check if initial_state was processed
-    console.log(
+    logger.log(
       `[GameEngine] Initial state in currentGame:`,
       this.currentGame.initialState,
     );
@@ -1513,19 +1506,19 @@ class GameEngineWrapper {
     this.boardController.resetBoard();
 
     // Place handicap stones if any
-    console.log(`[GameEngine] gameData.initial_state:`, gameData.initial_state);
-    console.log(`[GameEngine] gameData keys:`, Object.keys(gameData));
+    logger.log(`[GameEngine] gameData.initial_state:`, gameData.initial_state);
+    logger.log(`[GameEngine] gameData keys:`, Object.keys(gameData));
 
     if (gameData.initial_state) {
-      console.log(`[GameEngine] Calling placeHandicapStones...`);
+      logger.log(`[GameEngine] Calling placeHandicapStones...`);
       this.boardController.placeHandicapStones(gameData.initial_state);
     } else {
-      console.log(
+      logger.log(
         `[GameEngine] No initial_state found - no handicap stones to place`,
       );
       // Check if it might be under a different key
       if (gameData.initialState) {
-        console.log(
+        logger.log(
           `[GameEngine] Found initialState instead:`,
           gameData.initialState,
         );
@@ -1534,7 +1527,7 @@ class GameEngineWrapper {
     }
 
     // Then replay moves
-    console.log(
+    logger.log(
       `[GameEngine] Starting to replay ${parsedMoves.length} moves...`,
     );
     this.boardController.initializeFromMoves(parsedMoves);
@@ -1565,15 +1558,15 @@ class GameEngineWrapper {
     const lastMove = filteredData[filteredData.length - 1];
     const moves = this.parseReviewMoves(lastMove.m);
 
-    console.log(`[GameEngine] === INITIAL REVIEW SETUP ===`);
-    console.log(`[GameEngine] Parsed ${moves.length} moves for initial setup`);
+    logger.log(`[GameEngine] === INITIAL REVIEW SETUP ===`);
+    logger.log(`[GameEngine] Parsed ${moves.length} moves for initial setup`);
 
     // COMPLETE RESET - start from empty board
     this.boardController.resetBoard();
-    console.log(`[GameEngine] Board completely reset for initial review`);
+    logger.log(`[GameEngine] Board completely reset for initial review`);
 
     if (moves.length === 0) {
-      console.log(
+      logger.log(
         `[GameEngine] No moves for initial setup - board will remain empty`,
       );
     } else {
@@ -1588,13 +1581,13 @@ class GameEngineWrapper {
       finalBoardState.flat().filter((cell) => cell !== 0).length;
 
     if (totalStones === 0) {
-      console.log(`[GameEngine] INITIAL FINAL STATE: Empty board (0 stones)`);
+      logger.log(`[GameEngine] INITIAL FINAL STATE: Empty board (0 stones)`);
     } else {
-      console.log(
+      logger.log(
         `[GameEngine] INITIAL FINAL STATE: ${totalStones} stones on board`,
       );
     }
-    console.log(
+    logger.log(
       `[GameEngine] INITIAL FINAL CAPTURES: Black=${finalCaptures.black}, White=${finalCaptures.white}`,
     );
 
@@ -1609,10 +1602,15 @@ class GameEngineWrapper {
       }
     });
 
+    const outcome = gameData.gamedata?.outcome || gameData.gamedata?.winner || null;
+
     this.currentReview = {
       id: this.id,
       name: gameData.gamedata.game_name,
       moves: moves,
+      outcome,
+      winner: outcome,
+      finished: Boolean(outcome),
       players: {
         black: {
           name: gameData.gamedata.players.black.name,
@@ -1629,14 +1627,14 @@ class GameEngineWrapper {
       reviewEntries: filteredData, // Store original entries for time calculation
     };
 
-    console.log(
+    logger.log(
       `[GameEngine] Review ${this.id} initialized with ${moves.length} moves`,
     );
 
     // Update UI with final board state
     if (globalThis.uiManager) {
       globalThis.uiManager.updateUI(this.currentReview);
-      console.log(`[GameEngine] Initial UI update with final board state`);
+      logger.log(`[GameEngine] Initial UI update with final board state`);
       globalThis.uiManager.updateBoard(
         this.currentReview.moves,
         finalBoardState,
@@ -1644,7 +1642,7 @@ class GameEngineWrapper {
     }
 
     this.requestCurrentPositionAnalysis("initial-review-load");
-    console.log(`[GameEngine] === INITIAL REVIEW SETUP COMPLETE ===`);
+    logger.log(`[GameEngine] === INITIAL REVIEW SETUP COMPLETE ===`);
     return this.currentReview;
   }
 
@@ -1676,7 +1674,7 @@ class GameEngineWrapper {
         parsedMove.color,
       );
       if (!moveSuccess) {
-        console.warn(`[GameEngine] Invalid move attempted: ${parsedMove.move}`);
+        logger.warn(`[GameEngine] Invalid move attempted: ${parsedMove.move}`);
         return null;
       }
 
@@ -1706,11 +1704,11 @@ class GameEngineWrapper {
 
       // Log captures
       if (parsedMove.captured && parsedMove.captured > 0) {
-        console.log(`[GameEngine] ${parsedMove.captured} stones captured`);
+        logger.log(`[GameEngine] ${parsedMove.captured} stones captured`);
       }
     }
 
-    console.log(`[GameEngine] Move added:`, parsedMove);
+    logger.log(`[GameEngine] Move added:`, parsedMove);
 
     // Auto-request analysis for new move
     this.requestCurrentPositionAnalysis("new-game-move");
@@ -1793,7 +1791,7 @@ class GameEngineWrapper {
 
     // Only log clock updates when current player changes (moves played)
     if (currentPlayerChanged) {
-      console.log(`[GameEngine] Clock updated:`, this.currentGame.clock);
+      logger.log(`[GameEngine] Clock updated:`, this.currentGame.clock);
     }
     return this.currentGame.clock;
   }
@@ -1812,7 +1810,7 @@ class GameEngineWrapper {
     const currentPlayerClock = newClock[currentPlayerColor];
     if (currentPlayerClock.periods > 0 && currentPlayerClock.time <= 0) {
       currentPlayerClock.period_time_left = currentPlayerClock.periodTime;
-      console.log(
+      logger.log(
         `[GameEngine] Reset ${currentPlayerColor}'s byo-yomi period to full time`,
       );
     }
@@ -1844,7 +1842,7 @@ class GameEngineWrapper {
 
     // Apply drift correction if significant (>2 seconds)
     if (Math.abs(drift) > 2000) {
-      console.log(`[GameEngine] Applying drift correction: ${drift}ms`);
+      logger.log(`[GameEngine] Applying drift correction: ${drift}ms`);
 
       if (localClock.time > 0) {
         localClock.time = serverPlayerClock.time;
@@ -1890,7 +1888,7 @@ class GameEngineWrapper {
         }
 
         if (playerClock.time <= 0) {
-          console.log(`[GameEngine] Time expired for ${currentPlayer}`);
+          logger.log(`[GameEngine] Time expired for ${currentPlayer}`);
           this.onTimeExpired(currentPlayer);
         }
       } else if (playerClock.periods > 0) {
@@ -1911,11 +1909,11 @@ class GameEngineWrapper {
             playerClock.periods--;
             if (playerClock.periods > 0) {
               playerClock.period_time_left = playerClock.periodTime;
-              console.log(
+              logger.log(
                 `[GameEngine] Period expired for ${currentPlayer}, ${playerClock.periods} periods remaining`,
               );
             } else {
-              console.log(
+              logger.log(
                 `[GameEngine] All periods expired for ${currentPlayer}`,
               );
               this.onTimeExpired(currentPlayer);
@@ -1923,7 +1921,7 @@ class GameEngineWrapper {
           }
         } else {
           // No period time left and no periods remaining
-          console.log(`[GameEngine] All periods expired for ${currentPlayer}`);
+          logger.log(`[GameEngine] All periods expired for ${currentPlayer}`);
           this.onTimeExpired(currentPlayer);
         }
       }
@@ -1954,7 +1952,7 @@ class GameEngineWrapper {
       globalThis.uiManager.updateGameStatus(this.currentGame);
     }
 
-    console.log(`[GameEngine] Game phase updated to:`, phase);
+    logger.log(`[GameEngine] Game phase updated to:`, phase);
     return this.currentGame;
   }
 
@@ -2076,7 +2074,7 @@ class GameEngineWrapper {
   // Event handlers (override these in your implementation)
   onClockTick(clockData) {
     // Override this method to handle clock updates
-    console.log(`[GameEngine] Clock tick:`, {
+    logger.log(`[GameEngine] Clock tick:`, {
       black: this.formatTime(clockData.black),
       white: this.formatTime(clockData.white),
     });
@@ -2084,7 +2082,7 @@ class GameEngineWrapper {
 
   onTimeExpired(player) {
     // Override this method to handle time expiration
-    console.log(`[GameEngine] Time expired for ${player}`);
+    logger.log(`[GameEngine] Time expired for ${player}`);
   }
 }
 class URLRouter {
@@ -2125,7 +2123,7 @@ class URLRouter {
 
   // Handle route changes
   handleRoute(type, id) {
-    console.log(`[Router] Navigating to ${type} ${id}`);
+    logger.log(`[Router] Navigating to ${type} ${id}`);
 
     // Create new GameEngine for the route
     if (GameEngine) {
@@ -2158,7 +2156,7 @@ class URLRouter {
     if (route) {
       this.handleRoute(route.type, route.id);
     } else {
-      console.log(
+      logger.log(
         "[Router] No valid route found. Use format: /game/123456 or /review/123456",
       );
     }
@@ -2172,13 +2170,13 @@ const OGS = io("https://online-go.com", {
   transports: ["websocket"],
 });
 
-console.log(`[OGS-WS v${OGS_WS_VERSION}] OGS socket.io client created`);
+logger.log(`[OGS-WS v${OGS_WS_VERSION}] OGS socket.io client created`);
 
 // Connection event handlers (matching example.js exactly)
 OGS.on("connect", () => {
   const client_name = "browser-" + Math.random().toString(36).substr(2, 9);
-  console.log("client:", client_name);
-  console.log("OGS connected");
+  logger.log("client:", client_name);
+  logger.log("OGS connected");
   OGS.emit("hostinfo");
   OGS.emit("authenticate", { device_id: client_name });
 });
@@ -2219,18 +2217,18 @@ globalThis.connectToAI = (
   hostname = globalThis.AIHostname,
   port = globalThis.AIPort,
 ) => {
-  console.log(`[AI] Connecting to AI server at ${hostname}:${port}`);
+  logger.log(`[AI] Connecting to AI server at ${hostname}:${port}`);
   if (GameEngine) {
     GameEngine.connectToAI(hostname, port);
   } else {
-    console.log("[AI] No active game. Creating standalone AI connection...");
+    logger.log("[AI] No active game. Creating standalone AI connection...");
     AIAnalysis = new AIAnalysisManager(hostname, port);
     AIAnalysis.connect();
   }
 };
 
 globalThis.disconnectFromAI = () => {
-  console.log("[AI] Disconnecting from AI server");
+  logger.log("[AI] Disconnecting from AI server");
   if (GameEngine) {
     GameEngine.disconnectFromAI();
   }
@@ -2242,16 +2240,16 @@ globalThis.disconnectFromAI = () => {
 
 globalThis.requestAnalysis = (moveNumber = null) => {
   if (GameEngine) {
-    console.log(`[AI] Requesting analysis for move ${moveNumber || "current"}`);
+    logger.log(`[AI] Requesting analysis for move ${moveNumber || "current"}`);
     return GameEngine.requestAnalysis(moveNumber);
   } else {
-    console.log("[AI] No active game. Cannot request analysis.");
+    logger.log("[AI] No active game. Cannot request analysis.");
     return false;
   }
 };
 
 globalThis.setAIMaxVisits = (visits) => {
-  console.log(`[AI] Setting max visits to ${visits}`);
+  logger.log(`[AI] Setting max visits to ${visits}`);
   globalThis.AIMaxVisits = visits; // Update global setting
   if (GameEngine) {
     GameEngine.setAIMaxVisits(visits);
@@ -2278,18 +2276,18 @@ globalThis.getAIStatus = () => {
 // AI Configuration functions
 globalThis.enableAIAutoConnect = () => {
   globalThis.AIAutoConnect = true;
-  console.log("[AI] Auto-connect enabled");
+  logger.log("[AI] Auto-connect enabled");
 };
 
 globalThis.disableAIAutoConnect = () => {
   globalThis.AIAutoConnect = false;
-  console.log("[AI] Auto-connect disabled");
+  logger.log("[AI] Auto-connect disabled");
 };
 
 globalThis.setAIServer = (hostname, port = 8081) => {
   globalThis.AIHostname = hostname;
   globalThis.AIPort = port;
-  console.log(`[AI] Server settings updated: ${hostname}:${port}`);
+  logger.log(`[AI] Server settings updated: ${hostname}:${port}`);
 };
 
 // Quick connect function for hostname:8081
@@ -2298,7 +2296,7 @@ globalThis.connectToLocalAI = () => {
 };
 
 OGS.on("hostinfo", (hostinfo) => {
-  console.log("Termination server", hostinfo);
+  logger.log("Termination server", hostinfo);
 
   // OGS connection validated - initialize router
   router.init();
@@ -2308,15 +2306,15 @@ OGS.on("hostinfo", (hostinfo) => {
 
 // OGS doesn't return authentication - we don't need to wait for it
 OGS.on("authenticate", (auth) => {
-  console.log("Authentication event (not needed for connection):", auth);
+  logger.log("Authentication event (not needed for connection):", auth);
 });
 
 OGS.on("disconnect", () => {
-  console.log("Disconnected from OGS. Attempting to reconnect...");
+  logger.log("Disconnected from OGS. Attempting to reconnect...");
 });
 
 OGS.on("error", (error) => {
-  console.error("Socket connection error:", error);
+  logger.error("Socket connection error:", error);
 });
 
 // Filter out active-bots messages
@@ -2324,11 +2322,11 @@ OGS.on("active-bots", (_data) => {
   // Skip logging active-bots messages
 });
 
-console.log(`[OGS-WS v${OGS_WS_VERSION}] Event handlers set up`);
+logger.log(`[OGS-WS v${OGS_WS_VERSION}] Event handlers set up`);
 
 // AI Analysis Help
 globalThis.showAIHelp = () => {
-  console.log(`
+  logger.log(`
 🤖 AI Analysis Functions:
 
 Basic Usage:
@@ -2356,24 +2354,24 @@ Examples:
     `);
 };
 
-console.log(
+logger.log(
   `[AI] 🤖 AI Analysis ready! Default server: ${globalThis.AIHostname}:${globalThis.AIPort}`,
 );
-console.log(`[AI] 💡 Type showAIHelp() for usage instructions`);
+logger.log(`[AI] 💡 Type showAIHelp() for usage instructions`);
 
 // Test function for handicap stone parsing
 globalThis.testHandicapParsing = () => {
-  console.log("=== Testing Handicap Stone Parsing ===");
+  logger.log("=== Testing Handicap Stone Parsing ===");
 
   // Test the initial_state parsing with example data
   const testState = { black: "pppddp", white: "" };
 
   if (GameEngine && GameEngine.boardController) {
-    console.log("Testing with example state:", testState);
+    logger.log("Testing with example state:", testState);
     const result = GameEngine.boardController.parseInitialStateString(
       testState.black,
     );
-    console.log("Parsed coordinates:", result);
+    logger.log("Parsed coordinates:", result);
 
     // Expected: "pp"=[15,15], "pd"=[15,3], "dp"=[3,15]
     const expected = [
@@ -2382,137 +2380,137 @@ globalThis.testHandicapParsing = () => {
       { x: 3, y: 15 }, // dp
     ];
 
-    console.log("Expected coordinates:", expected);
+    logger.log("Expected coordinates:", expected);
 
     if (JSON.stringify(result) === JSON.stringify(expected)) {
-      console.log("✅ Handicap parsing test PASSED");
+      logger.log("✅ Handicap parsing test PASSED");
     } else {
-      console.log("❌ Handicap parsing test FAILED");
+      logger.log("❌ Handicap parsing test FAILED");
     }
   } else {
-    console.log("GameEngine not available for testing");
+    logger.log("GameEngine not available for testing");
   }
 };
 
-console.log(
+logger.log(
   `[Test] 💡 Type testHandicapParsing() to test handicap stone parsing`,
 );
 
 // Function to check current game state for handicap info
 globalThis.checkHandicapInfo = () => {
-  console.log("=== Checking Current Game Handicap Info ===");
+  logger.log("=== Checking Current Game Handicap Info ===");
 
   if (GameEngine && GameEngine.currentGame) {
-    console.log("Current game:", GameEngine.currentGame);
-    console.log("Handicap:", GameEngine.currentGame.handicap);
-    console.log("Initial player:", GameEngine.currentGame.initialPlayer);
-    console.log("Initial state:", GameEngine.currentGame.initialState);
+    logger.log("Current game:", GameEngine.currentGame);
+    logger.log("Handicap:", GameEngine.currentGame.handicap);
+    logger.log("Initial player:", GameEngine.currentGame.initialPlayer);
+    logger.log("Initial state:", GameEngine.currentGame.initialState);
 
     if (GameEngine.boardController) {
-      console.log("Board state after initialization:");
-      console.log(GameEngine.boardController.getBoardString());
+      logger.log("Board state after initialization:");
+      logger.log(GameEngine.boardController.getBoardString());
     }
   } else {
-    console.log("No active game found");
+    logger.log("No active game found");
   }
 };
 
-console.log(
+logger.log(
   `[Test] 💡 Type checkHandicapInfo() to check current game handicap info`,
 );
 
 // Function to manually test handicap stone placement
 globalThis.testHandicapPlacement = () => {
-  console.log("=== Testing Handicap Stone Placement ===");
+  logger.log("=== Testing Handicap Stone Placement ===");
 
   if (GameEngine && GameEngine.boardController) {
     // Test with the example data from earlier
     const testInitialState = { black: "pppddp", white: "" };
-    console.log("Testing with:", testInitialState);
+    logger.log("Testing with:", testInitialState);
 
     // Reset board
     GameEngine.boardController.resetBoard();
-    console.log("Board reset");
+    logger.log("Board reset");
 
     // Place handicap stones
     GameEngine.boardController.placeHandicapStones(testInitialState);
-    console.log("Handicap stones placed");
+    logger.log("Handicap stones placed");
 
     // Show board state
-    console.log("Board after handicap placement:");
-    console.log(GameEngine.boardController.getBoardString());
+    logger.log("Board after handicap placement:");
+    logger.log(GameEngine.boardController.getBoardString());
 
     // Count stones
     const boardState = GameEngine.boardController.getBoardState();
     const blackStones = boardState.flat().filter((cell) => cell === 1).length;
     const whiteStones = boardState.flat().filter((cell) => cell === 2).length;
-    console.log(`Black stones: ${blackStones}, White stones: ${whiteStones}`);
+    logger.log(`Black stones: ${blackStones}, White stones: ${whiteStones}`);
   } else {
-    console.log("GameEngine not available");
+    logger.log("GameEngine not available");
   }
 };
 
-console.log(
+logger.log(
   `[Test] 💡 Type testHandicapPlacement() to test handicap stone placement`,
 );
 
 // Function to inspect raw game data for handicap info
 globalThis.inspectGameData = () => {
-  console.log("=== Inspecting Raw Game Data ===");
+  logger.log("=== Inspecting Raw Game Data ===");
 
   // Try to get the raw game data from the last received event
   if (globalThis.lastGameData) {
-    console.log("Last received game data:", globalThis.lastGameData);
-    console.log("Handicap:", globalThis.lastGameData.handicap);
-    console.log("Initial player:", globalThis.lastGameData.initial_player);
-    console.log("Initial state:", globalThis.lastGameData.initial_state);
+    logger.log("Last received game data:", globalThis.lastGameData);
+    logger.log("Handicap:", globalThis.lastGameData.handicap);
+    logger.log("Initial player:", globalThis.lastGameData.initial_player);
+    logger.log("Initial state:", globalThis.lastGameData.initial_state);
   } else {
-    console.log("No raw game data available");
+    logger.log("No raw game data available");
 
     // Try to get from GameEngine
     if (GameEngine && GameEngine.currentGame) {
-      console.log("Current game data:", GameEngine.currentGame);
+      logger.log("Current game data:", GameEngine.currentGame);
     }
   }
 };
 
-console.log(`[Test] 💡 Type inspectGameData() to inspect raw game data`);
+logger.log(`[Test] 💡 Type inspectGameData() to inspect raw game data`);
 
 // Function to check if current game is a handicap game
 globalThis.isHandicapGame = () => {
-  console.log("=== Checking if Current Game is Handicap ===");
+  logger.log("=== Checking if Current Game is Handicap ===");
 
   if (globalThis.lastGameData) {
     const handicap = globalThis.lastGameData.handicap || 0;
     const initialState = globalThis.lastGameData.initial_state;
 
-    console.log(`Handicap: ${handicap}`);
-    console.log(`Initial state:`, initialState);
+    logger.log(`Handicap: ${handicap}`);
+    logger.log(`Initial state:`, initialState);
 
     if (handicap > 0) {
-      console.log(`✅ This IS a handicap game with ${handicap} stones`);
-      console.log(`Initial player: ${globalThis.lastGameData.initial_player}`);
+      logger.log(`✅ This IS a handicap game with ${handicap} stones`);
+      logger.log(`Initial player: ${globalThis.lastGameData.initial_player}`);
 
       if (initialState && (initialState.black || initialState.white)) {
-        console.log(`✅ Has initial stones:`, initialState);
+        logger.log(`✅ Has initial stones:`, initialState);
       } else {
-        console.log(`❌ No initial stones found`);
+        logger.log(`❌ No initial stones found`);
       }
     } else {
-      console.log(`❌ This is NOT a handicap game (handicap = 0)`);
+      logger.log(`❌ This is NOT a handicap game (handicap = 0)`);
     }
   } else {
-    console.log("No game data available");
+    logger.log("No game data available");
   }
 };
 
-console.log(
+logger.log(
   `[Test] 💡 Type isHandicapGame() to check if current game is handicap`,
 );
 
 // Function to test handicap parsing with example data
 globalThis.testHandicapExample = () => {
-  console.log("=== Testing Handicap with Example Data ===");
+  logger.log("=== Testing Handicap with Example Data ===");
 
   // Example data from the earlier game
   const exampleGameData = {
@@ -2521,11 +2519,11 @@ globalThis.testHandicapExample = () => {
     initial_state: { black: "pppddp", white: "" },
   };
 
-  console.log("Example game data:", exampleGameData);
+  logger.log("Example game data:", exampleGameData);
 
   // Test the parsing
   if (GameEngine && GameEngine.boardController) {
-    console.log("Testing handicap stone placement...");
+    logger.log("Testing handicap stone placement...");
 
     // Reset board
     GameEngine.boardController.resetBoard();
@@ -2536,42 +2534,42 @@ globalThis.testHandicapExample = () => {
     );
 
     // Show results
-    console.log("Board after handicap placement:");
-    console.log(GameEngine.boardController.getBoardString());
+    logger.log("Board after handicap placement:");
+    logger.log(GameEngine.boardController.getBoardString());
 
     // Count stones
     const boardState = GameEngine.boardController.getBoardState();
     const blackStones = boardState.flat().filter((cell) => cell === 1).length;
     const whiteStones = boardState.flat().filter((cell) => cell === 2).length;
-    console.log(`Black stones: ${blackStones}, White stones: ${whiteStones}`);
+    logger.log(`Black stones: ${blackStones}, White stones: ${whiteStones}`);
 
     if (blackStones === 3) {
-      console.log("✅ Handicap stone placement test PASSED");
+      logger.log("✅ Handicap stone placement test PASSED");
     } else {
-      console.log("❌ Handicap stone placement test FAILED");
+      logger.log("❌ Handicap stone placement test FAILED");
     }
   } else {
-    console.log("GameEngine not available");
+    logger.log("GameEngine not available");
   }
 };
 
-console.log(
+logger.log(
   `[Test] 💡 Type testHandicapExample() to test with example handicap data`,
 );
 
 // Function to test coordinate parsing specifically
 globalThis.testCoordinateParsing = () => {
-  console.log("=== Testing Coordinate Parsing ===");
+  logger.log("=== Testing Coordinate Parsing ===");
 
   // Test the 2-stone handicap example
   const testString = "pddp";
-  console.log(`Testing string: "${testString}"`);
+  logger.log(`Testing string: "${testString}"`);
 
   if (GameEngine && GameEngine.boardController) {
     const result = GameEngine.boardController.parseInitialStateString(
       testString,
     );
-    console.log("Parsed coordinates:", result);
+    logger.log("Parsed coordinates:", result);
 
     // Expected: "pd" = Q16, "dp" = D4
     const expected = [
@@ -2579,28 +2577,28 @@ globalThis.testCoordinateParsing = () => {
       { x: 3, y: 15 }, // dp -> D4
     ];
 
-    console.log("Expected coordinates:", expected);
+    logger.log("Expected coordinates:", expected);
 
     if (JSON.stringify(result) === JSON.stringify(expected)) {
-      console.log("✅ Coordinate parsing test PASSED");
+      logger.log("✅ Coordinate parsing test PASSED");
     } else {
-      console.log("❌ Coordinate parsing test FAILED");
+      logger.log("❌ Coordinate parsing test FAILED");
     }
   } else {
-    console.log("GameEngine not available");
+    logger.log("GameEngine not available");
   }
 };
 
-console.log(
+logger.log(
   `[Test] 💡 Type testCoordinateParsing() to test coordinate parsing`,
 );
 
 // Function to debug coordinate mapping
 globalThis.debugCoordinateMapping = () => {
-  console.log("=== Debugging Coordinate Mapping ===");
+  logger.log("=== Debugging Coordinate Mapping ===");
 
   const letters = "abcdefghjklmnopqrst";
-  console.log("Letter mapping:", letters);
+  logger.log("Letter mapping:", letters);
 
   // Test specific coordinates
   const testCoords = [
@@ -2614,27 +2612,27 @@ globalThis.debugCoordinateMapping = () => {
     const number = 19 - coord.y;
     const result = `${letter}${number}`;
 
-    console.log(
+    logger.log(
       `${coord.char} -> index ${index} -> ${result} (expected ${coord.expected})`,
     );
-    console.log(`  Expected: [${coord.x}, ${coord.y}] -> ${coord.expected}`);
-    console.log(`  Actual:   [${index}, ${coord.y}] -> ${result}`);
+    logger.log(`  Expected: [${coord.x}, ${coord.y}] -> ${coord.expected}`);
+    logger.log(`  Actual:   [${index}, ${coord.y}] -> ${result}`);
   });
 
   // Check if the issue is with the letter mapping
-  console.log("Checking letter positions:");
-  console.log("p position:", letters.indexOf("p"), "(should be 15 for Q16)");
-  console.log("q position:", letters.indexOf("q"), "(should be 16 for R16)");
-  console.log("d position:", letters.indexOf("d"), "(should be 3 for D4)");
+  logger.log("Checking letter positions:");
+  logger.log("p position:", letters.indexOf("p"), "(should be 15 for Q16)");
+  logger.log("q position:", letters.indexOf("q"), "(should be 16 for R16)");
+  logger.log("d position:", letters.indexOf("d"), "(should be 3 for D4)");
 };
 
-console.log(
+logger.log(
   `[Test] 💡 Type debugCoordinateMapping() to debug coordinate mapping`,
 );
 
 // Function to test actual coordinate mapping for hoshi positions
 globalThis.testHoshiPositions = () => {
-  console.log("=== Testing Hoshi Positions for Handicap Stones ===");
+  logger.log("=== Testing Hoshi Positions for Handicap Stones ===");
 
   const letters = "abcdefghjklmnopqrst";
 
@@ -2647,18 +2645,18 @@ globalThis.testHoshiPositions = () => {
     { name: "16-16", x: 15, y: 15, expected: "P4" },
   ];
 
-  console.log("Testing hoshi positions:");
+  logger.log("Testing hoshi positions:");
   hoshiPositions.forEach((pos) => {
     const x_letter = letters[pos.x];
     const y_number = 19 - pos.y;
     const result = `${x_letter}${y_number}`;
-    console.log(
+    logger.log(
       `${pos.name}: [${pos.x}, ${pos.y}] -> ${result} (expected ${pos.expected})`,
     );
   });
 
   // Test the actual handicap string "pddp"
-  console.log('\nTesting actual handicap string "pddp":');
+  logger.log('\nTesting actual handicap string "pddp":');
   const testString = "pddp";
   for (let i = 0; i < testString.length; i += 2) {
     if (i + 1 < testString.length) {
@@ -2669,16 +2667,16 @@ globalThis.testHoshiPositions = () => {
       const x_letter = letters[x_index];
       const y_number = 19 - y_index;
       const result = `${x_letter}${y_number}`;
-      console.log(
+      logger.log(
         `"${char1}${char2}" -> [${x_index}, ${y_index}] -> ${result}`,
       );
     }
   }
 
   // Check what the correct 2-stone handicap positions should be
-  console.log("\nExpected 2-stone handicap positions:");
-  console.log("- Q16 (16th line from left, 4th line from top)");
-  console.log("- D4 (4th line from left, 16th line from top)");
+  logger.log("\nExpected 2-stone handicap positions:");
+  logger.log("- Q16 (16th line from left, 4th line from top)");
+  logger.log("- D4 (4th line from left, 16th line from top)");
 
   // Calculate what coordinates these should be
   const q16_x = letters.indexOf("q"); // should be 15
@@ -2686,8 +2684,8 @@ globalThis.testHoshiPositions = () => {
   const d4_x = letters.indexOf("d"); // should be 3
   const d4_y = 15; // 16th line from top = index 15
 
-  console.log(`Q16 should be: [${q16_x}, ${q16_y}] -> q${19 - q16_y}`);
-  console.log(`D4 should be: [${d4_x}, ${d4_y}] -> d${19 - d4_y}`);
+  logger.log(`Q16 should be: [${q16_x}, ${q16_y}] -> q${19 - q16_y}`);
+  logger.log(`D4 should be: [${d4_x}, ${d4_y}] -> d${19 - d4_y}`);
 };
 
-console.log(`[Test] 💡 Type testHoshiPositions() to test hoshi positions`);
+logger.log(`[Test] 💡 Type testHoshiPositions() to test hoshi positions`);

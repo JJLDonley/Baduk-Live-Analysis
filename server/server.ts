@@ -1,3 +1,9 @@
+import {
+  enableLoggerFromUrl,
+  endLoggerDebugSession,
+  logger,
+  startLoggerDebugSession,
+} from "./logger.ts";
 import { AIChildProcess } from "./ai.ts";
 import { ArgumentParser, ConfigManager, ServerConfig } from "./config.ts";
 import {
@@ -104,12 +110,12 @@ class AnalysisServer {
       // Start WebSocket server
       this.startWebSocketServer();
 
-      console.log(
+      logger.log(
         `[Server] Baduk Live Analysis Server started on ${this.config.host}:${this.config.port}`,
       );
-      console.log(`[Server] KataGo ready for analysis`);
+      logger.log(`[Server] KataGo ready for analysis`);
     } catch (error) {
-      console.error(`[Server] Failed to start server:`, error);
+      logger.error(`[Server] Failed to start server:`, error);
       throw error;
     }
   }
@@ -119,10 +125,10 @@ class AnalysisServer {
     const modelPath = this.configManager.getKataGoModelPath();
     const configPath = this.configManager.getKataGoConfigPath();
 
-    console.log(`[KataGo] Starting KataGo process...`);
-    console.log(`[KataGo] Executable: ${executablePath}`);
-    console.log(`[KataGo] Model: ${modelPath}`);
-    console.log(`[KataGo] Config: ${configPath}`);
+    logger.log(`[KataGo] Starting KataGo process...`);
+    logger.log(`[KataGo] Executable: ${executablePath}`);
+    logger.log(`[KataGo] Model: ${modelPath}`);
+    logger.log(`[KataGo] Config: ${configPath}`);
 
     const args = [
       "analysis",
@@ -161,7 +167,7 @@ class AnalysisServer {
     };
 
     await this.katago.query(initQuery);
-    console.log(`[KataGo] Engine initialized successfully`);
+    logger.log(`[KataGo] Engine initialized successfully`);
   }
 
   private startWebSocketServer(): void {
@@ -169,19 +175,20 @@ class AnalysisServer {
       port: this.config.port,
       hostname: this.config.host,
       onError: (error) => {
-        console.error(`[Server] Request error:`, error);
+        logger.error(`[Server] Request error:`, error);
         return new Response("Internal Server Error", { status: 500 });
       },
     }, (req) => {
       return this.handleRequest(req);
     });
 
-    console.log(
+    logger.log(
       `[Server] WebSocket server listening on ws://${this.config.host}:${this.config.port}`,
     );
   }
 
   private handleRequest(req: Request): Response {
+    enableLoggerFromUrl(new URL(req.url));
     const upgrade = req.headers.get("upgrade") ?? "";
     if (upgrade.toLowerCase() !== "websocket") {
       // Browsers, health checks, or port scanners may hit this HTTP endpoint.
@@ -212,10 +219,16 @@ class AnalysisServer {
       });
     }
 
+    const url = new URL(req.url);
+    let debugSession = startLoggerDebugSession(url);
+    const endDebugSession = () => {
+      endLoggerDebugSession(debugSession);
+      debugSession = false;
+    };
     const urlContext = GameContext.fromRequestUrl(req);
 
     socket.onopen = () => {
-      console.log(
+      logger.log(
         `[WebSocket] Client connected${
           urlContext ? ` for ${urlContext.key()}` : ""
         }`,
@@ -238,13 +251,15 @@ class AnalysisServer {
     };
 
     socket.onclose = () => {
-      console.log(`[WebSocket] Client disconnected`);
+      logger.log(`[WebSocket] Client disconnected`);
       this.websocketConnections.delete(socket);
+      endDebugSession();
     };
 
     socket.onerror = (error) => {
-      console.error(`[WebSocket] Connection error:`, error);
+      logger.error(`[WebSocket] Connection error:`, error);
       this.websocketConnections.delete(socket);
+      endDebugSession();
     };
 
     return response;
@@ -271,7 +286,7 @@ class AnalysisServer {
 
       this.enqueueAnalysisFromPayload(socket, request, undefined, false);
     } catch (error) {
-      console.error(`[Analysis] Error parsing request:`, error);
+      logger.error(`[Analysis] Error parsing request:`, error);
       this.sendError(socket, "Invalid JSON in analysis request");
     }
   }
@@ -324,7 +339,7 @@ class AnalysisServer {
     analysisRequest.includeOwnership = analysisRequest.includeOwnership &&
       this.config.analysis.includeOwnership;
 
-    console.log(
+    logger.log(
       `[Analysis] Received request ${analysisRequest.id} for ${context.key()} with ${analysisRequest.moves.length} moves`,
     );
 
@@ -652,7 +667,7 @@ class AnalysisServer {
       try {
         await this.processAnalysisRequest(request);
       } catch (error) {
-        console.error(
+        logger.error(
           `[Analysis] Error processing request ${request.id}:`,
           error,
         );
@@ -691,7 +706,7 @@ class AnalysisServer {
     // Convert moves to KataGo format
     const katagoQuery = this.convertToKataGoFormat(request);
 
-    console.log(
+    logger.log(
       `[Analysis] Processing ${request.id} with ${request.maxVisits} visits`,
     );
 
@@ -702,7 +717,7 @@ class AnalysisServer {
       const response = await this.katago.query(katagoQuery, timeout);
 
       const processingTime = Date.now() - startTime;
-      console.log(`[Analysis] Completed ${request.id} in ${processingTime}ms`);
+      logger.log(`[Analysis] Completed ${request.id} in ${processingTime}ms`);
 
       // Parse and send response
       const analysisResult = JSON.parse(response);
@@ -785,7 +800,7 @@ class AnalysisServer {
         this.processPatternMatchingForLatestMove(socket, request);
       }
     } catch (error) {
-      console.error(`[Analysis] Request ${request.id} failed:`, error);
+      logger.error(`[Analysis] Request ${request.id} failed:`, error);
       const errorMessage = error instanceof Error
         ? error.message
         : String(error);
@@ -802,13 +817,13 @@ class AnalysisServer {
   }
 
   private async restartKataGoAfterFailure(): Promise<void> {
-    console.warn("[KataGo] Restarting engine after analysis failure");
+    logger.warn("[KataGo] Restarting engine after analysis failure");
     try {
       if (this.katago) {
         this.katago.ProcessKill();
       }
     } catch (error) {
-      console.error("[KataGo] Error killing failed process:", error);
+      logger.error("[KataGo] Error killing failed process:", error);
     } finally {
       this.katago = null;
     }
@@ -833,7 +848,7 @@ class AnalysisServer {
     try {
       // Get the latest move from the request
       if (request.moves.length === 0) {
-        console.log(
+        logger.log(
           `[PatternMatch] No moves to analyze for request ${request.id}`,
         );
         return;
@@ -855,7 +870,7 @@ class AnalysisServer {
           match: null,
           timestamp: Date.now(),
         });
-        console.log(`[PatternMatch] Latest move is pass for ${request.id}`);
+        logger.log(`[PatternMatch] Latest move is pass for ${request.id}`);
         return;
       }
 
@@ -904,13 +919,13 @@ class AnalysisServer {
 
       this.sendPatternMatchResponse(socket, patternResponse);
 
-      console.log(
+      logger.log(
         `[PatternMatch] Sent pattern match for move ${move}: ${
           patternResult.moveName || "No pattern found"
         }`,
       );
     } catch (error) {
-      console.error(`[PatternMatch] Error processing pattern matching:`, error);
+      logger.error(`[PatternMatch] Error processing pattern matching:`, error);
       // Don't send error to client for pattern matching failures
     }
   }
@@ -945,7 +960,7 @@ class AnalysisServer {
         const sign = moveColor === "black" ? 1 : -1;
         board[vertex[1]][vertex[0]] = sign;
       } else {
-        console.warn(
+        logger.warn(
           `[PatternMatch] Invalid vertex [${vertex[0]}, ${
             vertex[1]
           }] for board size ${boardXSize}x${boardYSize}`,
@@ -1023,7 +1038,7 @@ class AnalysisServer {
         socket.send(JSON.stringify(response));
       }
     } catch (error) {
-      console.error(`[WebSocket] Error sending response:`, error);
+      logger.error(`[WebSocket] Error sending response:`, error);
     }
   }
 
@@ -1036,7 +1051,7 @@ class AnalysisServer {
         }));
       }
     } catch (error) {
-      console.error(`[WebSocket] Error sending error:`, error);
+      logger.error(`[WebSocket] Error sending error:`, error);
     }
   }
 
@@ -1250,7 +1265,7 @@ class AnalysisServer {
         }));
       }
     } catch (error) {
-      console.error(`[WebSocket] Error sending event:`, error);
+      logger.error(`[WebSocket] Error sending event:`, error);
     }
   }
 
@@ -1268,7 +1283,7 @@ class AnalysisServer {
         return;
       }
 
-      console.log(
+      logger.log(
         `[PatternMatch] Received request ${request.id} for move at [${
           request.vertex[0]
         }, ${request.vertex[1]}]`,
@@ -1294,7 +1309,7 @@ class AnalysisServer {
 
       this.sendPatternMatchResponse(socket, patternResponse);
     } catch (error) {
-      console.error(`[PatternMatch] Error processing request:`, error);
+      logger.error(`[PatternMatch] Error processing request:`, error);
       const errorMessage = error instanceof Error
         ? error.message
         : String(error);
@@ -1308,19 +1323,19 @@ class AnalysisServer {
         socket.send(JSON.stringify(response));
       }
     } catch (error) {
-      console.error(`[WebSocket] Error sending pattern match response:`, error);
+      logger.error(`[WebSocket] Error sending pattern match response:`, error);
     }
   }
 
   public shutdown(): void {
-    console.log(`[Server] Shutting down server...`);
+    logger.log(`[Server] Shutting down server...`);
 
     // Close all WebSocket connections
     this.websocketConnections.forEach((socket) => {
       try {
         socket.close();
       } catch (error) {
-        console.error(`[WebSocket] Error closing connection:`, error);
+        logger.error(`[WebSocket] Error closing connection:`, error);
       }
     });
 
@@ -1330,7 +1345,7 @@ class AnalysisServer {
       this.katago = null;
     }
 
-    console.log(`[Server] Server shutdown complete`);
+    logger.log(`[Server] Server shutdown complete`);
   }
 
   public getServerStats(): any {
@@ -1346,7 +1361,7 @@ class AnalysisServer {
 
 // Main server startup
 async function main(): Promise<void> {
-  console.log("Starting Baduk Live Analysis Server...");
+  logger.log("Starting Baduk Live Analysis Server...");
 
   // Parse command line arguments
   const argumentParser = new ArgumentParser(Deno.args);
@@ -1359,25 +1374,25 @@ async function main(): Promise<void> {
   // Apply command line overrides
   if (Object.keys(argConfig).length > 0) {
     configManager.updateConfig(argConfig);
-    console.log(`[Config] Applied command line overrides`);
+    logger.log(`[Config] Applied command line overrides`);
   }
 
   // Validate configuration
   const validation = configManager.validateConfig();
   if (!validation.valid) {
-    console.error(`[Config] Configuration validation failed:`);
-    validation.errors.forEach((error) => console.error(`  - ${error}`));
+    logger.error(`[Config] Configuration validation failed:`);
+    validation.errors.forEach((error) => logger.error(`  - ${error}`));
     Deno.exit(1);
   }
 
-  console.log(`[Config] Configuration validated successfully`);
+  logger.log(`[Config] Configuration validated successfully`);
 
   // Create and start server
   const server = new AnalysisServer(configManager.getConfig(), configManager);
 
   // Handle shutdown signals
   const handleShutdown = () => {
-    console.log(`[Server] Received shutdown signal`);
+    logger.log(`[Server] Received shutdown signal`);
     server.shutdown();
     Deno.exit(0);
   };
@@ -1394,9 +1409,9 @@ async function main(): Promise<void> {
     await server.start();
 
     // Keep server running
-    console.log(`[Server] Server is running. Press Ctrl+C to stop.`);
+    logger.log(`[Server] Server is running. Press Ctrl+C to stop.`);
   } catch (error) {
-    console.error(`[Server] Fatal error:`, error);
+    logger.error(`[Server] Fatal error:`, error);
     Deno.exit(1);
   }
 }

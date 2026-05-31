@@ -1,3 +1,4 @@
+import { enableLoggerFromUrl, logger } from "./server/logger.ts";
 import { withElementVisibility } from "./server/frontend-elements.ts";
 
 function safeClientPath(pathname: string): string | null {
@@ -20,15 +21,16 @@ function envOrDefault(name: string, fallback: string): string {
 const frontendHost = envOrDefault("BLA_FRONTEND_HOST", "127.0.0.1");
 const frontendPort = Number(envOrDefault("BLA_FRONTEND_PORT", "8080"));
 
-console.log(
+logger.log(
   `[Server] Frontend listening on http://${frontendHost}:${frontendPort}`,
 );
 
 Deno.serve({ hostname: frontendHost, port: frontendPort }, async (req) => {
   const url = new URL(req.url);
+  enableLoggerFromUrl(url);
   const pathname = url.pathname;
 
-  console.log(`[Server] Request: ${pathname}`);
+  logger.log(`[Server] Request: ${pathname}`);
 
   try {
     // Handle favicon.ico
@@ -38,7 +40,7 @@ Deno.serve({ hostname: frontendHost, port: frontendPort }, async (req) => {
 
     // Serve ogs-ws.js file
     if (pathname === "/ogs-ws.js") {
-      console.log("[Server] Serving ogs-ws.js");
+      logger.log("[Server] Serving ogs-ws.js");
       const ogsSocket = await Deno.readTextFile("client/ogs-ws.js");
       return new Response(ogsSocket, {
         headers: {
@@ -94,7 +96,7 @@ Deno.serve({ hostname: frontendHost, port: frontendPort }, async (req) => {
           },
         });
       } catch (error) {
-        console.error(`[Server] Error serving ${filePath}:`, error);
+        logger.error(`[Server] Error serving ${filePath}:`, error);
         return new Response("File not found", { status: 404 });
       }
     }
@@ -146,14 +148,14 @@ Deno.serve({ hostname: frontendHost, port: frontendPort }, async (req) => {
           },
         });
       } catch (error) {
-        console.error(`[Server] Error serving ${filePath}:`, error);
+        logger.error(`[Server] Error serving ${filePath}:`, error);
         return new Response("File not found", { status: 404 });
       }
     }
 
     // Serve index.html for all other routes (including dynamic ones)
     // This includes /, /game/123456, /review/789, etc.
-    console.log("[Server] Serving index.html");
+    logger.log("[Server] Serving index.html");
     const index = withElementVisibility(
       await Deno.readTextFile("client/index.html"),
       url,
@@ -164,7 +166,7 @@ Deno.serve({ hostname: frontendHost, port: frontendPort }, async (req) => {
       },
     });
   } catch (error) {
-    console.error("Server error:", error);
+    logger.error("Server error:", error);
     return new Response("Internal server error", { status: 500 });
   }
 });

@@ -1,3 +1,4 @@
+import { logger } from "./logger.ts";
 import { join, resolve } from "@std/path";
 
 export interface ServerConfig {
@@ -71,18 +72,18 @@ export class ConfigManager {
       // Merge with defaults to ensure all properties exist
       this.config = this.mergeConfigs(this.getDefaultConfig(), loadedConfig);
 
-      console.log(`[Config] Configuration loaded from ${this.configFile}`);
+      logger.log(`[Config] Configuration loaded from ${this.configFile}`);
       return this.config;
     } catch (error) {
       if (error instanceof Deno.errors.NotFound) {
-        console.log(
+        logger.log(
           `[Config] Configuration file ${this.configFile} not found, creating default...`,
         );
         await this.saveConfig();
         return this.config;
       } else {
-        console.error(`[Config] Error loading configuration:`, error);
-        console.log(`[Config] Using default configuration`);
+        logger.error(`[Config] Error loading configuration:`, error);
+        logger.log(`[Config] Using default configuration`);
         return this.config;
       }
     }
@@ -92,9 +93,9 @@ export class ConfigManager {
     try {
       const configText = JSON.stringify(this.config, null, 2);
       await Deno.writeTextFile(this.configFile, configText);
-      console.log(`[Config] Configuration saved to ${this.configFile}`);
+      logger.log(`[Config] Configuration saved to ${this.configFile}`);
     } catch (error) {
-      console.error(`[Config] Error saving configuration:`, error);
+      logger.error(`[Config] Error saving configuration:`, error);
     }
   }
 
@@ -330,7 +331,7 @@ export class ArgumentParser {
   }
 
   private printHelp(): void {
-    console.log(`
+    logger.log(`
 Baduk Live Analysis Server
 
 Usage: deno run -Ar server/server.ts [options]

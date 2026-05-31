@@ -113,7 +113,6 @@ export function withElementVisibility(index: string, url: URL): string {
     !(showScore || showBlackPoints || showWhitePoints) && ".counting",
     !(showEval || showBlackWinrate || showWhiteWinrate) &&
     ".winrate-bar-section",
-    !showShape && ".shape-name",
     !showStatus && ".game-status",
     !showResult && ".result-modal",
     !showInfo && ".information",

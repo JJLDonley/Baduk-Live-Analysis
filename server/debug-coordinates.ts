@@ -1,6 +1,7 @@
+import { logger } from "./logger.ts";
 import { ogsStringToVertex } from "./pattern.ts";
 
-console.log("Debugging coordinate conversion...");
+logger.log("Debugging coordinate conversion...");
 
 const testMoves = [
   "r16",
@@ -20,17 +21,17 @@ const testMoves = [
 for (const move of testMoves) {
   try {
     const vertex = ogsStringToVertex(move);
-    console.log(`Move: ${move} -> Vertex: [${vertex[0]}, ${vertex[1]}]`);
+    logger.log(`Move: ${move} -> Vertex: [${vertex[0]}, ${vertex[1]}]`);
 
     // Check if coordinates are valid for 19x19 board
     if (vertex[0] >= 0 && vertex[0] < 19 && vertex[1] >= 0 && vertex[1] < 19) {
-      console.log(`  ✅ Valid coordinates`);
+      logger.log(`  ✅ Valid coordinates`);
     } else {
-      console.log(`  ❌ Invalid coordinates for 19x19 board`);
+      logger.log(`  ❌ Invalid coordinates for 19x19 board`);
     }
   } catch (error) {
-    console.log(`Move: ${move} -> Error: ${error}`);
+    logger.log(`Move: ${move} -> Error: ${error}`);
   }
 }
 
-console.log("\nCoordinate conversion test completed!");
+logger.log("\nCoordinate conversion test completed!");
