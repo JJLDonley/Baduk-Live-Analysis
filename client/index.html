@@ -323,13 +323,13 @@
         left: 0;
         right: 0;
         bottom: 0;
-        background: rgba(0, 0, 0, 0.7);
+        background: rgba(0, 0, 0, 0.28);
         display: flex;
         justify-content: center;
         align-items: center;
         z-index: 1000;
         border-radius: 8px;
-        backdrop-filter: blur(4px);
+        backdrop-filter: blur(1px);
       }
 
       .game-over-text {
@@ -1690,8 +1690,25 @@
         mountBoard(svg) {
           const boardContainer = document.querySelector(".goboard");
           if (boardContainer) {
+            // Preserve the game-result overlay inside the board. If we drop it
+            // while mounting SVG, result display falls back to the external
+            // modal and pushes page layout around.
+            let overlay = document.getElementById("game-over-overlay");
             boardContainer.innerHTML = "";
             boardContainer.appendChild(svg);
+
+            if (!overlay) {
+              overlay = document.createElement("div");
+              overlay.id = "game-over-overlay";
+              overlay.className = "game-over-overlay";
+              overlay.style.display = "none";
+              const text = document.createElement("div");
+              text.id = "game-over-text";
+              text.className = "game-over-text";
+              text.textContent = "B+";
+              overlay.appendChild(text);
+            }
+            boardContainer.appendChild(overlay);
           }
         }
 
@@ -3607,9 +3624,11 @@ body.eval-bar-only .winrate-bar {
           }
 
           this.gameOverText.textContent = winner;
-          this.gameOverOverlay.style.display = "flex";
+          const boardElement = this.gameOverOverlay?.closest(".goboard");
+          const boardVisible = boardElement && getComputedStyle(boardElement).display !== "none";
+          this.gameOverOverlay.style.display = boardVisible ? "flex" : "none";
           if (this.resultModalText) this.resultModalText.textContent = winner;
-          if (this.resultModal) this.resultModal.style.display = "flex";
+          if (this.resultModal) this.resultModal.style.display = boardVisible ? "none" : "flex";
 
           logger.log(
             "[UI] Game Over - Winner:",
