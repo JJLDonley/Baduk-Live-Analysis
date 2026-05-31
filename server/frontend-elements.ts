@@ -149,7 +149,11 @@ export function withElementVisibility(index: string, url: URL): string {
   const showAnyIndex = showBlackIndex || showWhiteIndex;
   const showAllScoreLabels = showScore && territoryRequested.size === 0 &&
     areaRequested.size === 0 && !hasSideFilters;
+  const showAnyScoreLabel = showAllScoreLabels || showBlackPoints ||
+    showWhitePoints || showBlackInfluence || showWhiteInfluence ||
+    showUnclaimedPoints;
   const showAllEval = showEval && evalRequested.size === 0 && !hasSideFilters;
+  const showAnyEvalLabel = showAllEval || showBlackWinrate || showWhiteWinrate;
 
   const hiddenSelectors = [
     !showBoard && ".goboard",
@@ -170,6 +174,8 @@ export function withElementVisibility(index: string, url: URL): string {
     showInfo && !showPie && !showLegend && !showAllInfo && ".winrate",
     showInfo && !showPie && !showAllInfo && "#pie, #pie-over, #pie-text",
     showInfo && !showLegend && !showAllInfo && ".move-quality-indicator",
+    (showScore || showBlackPoints || showWhitePoints || showBlackInfluence ||
+      showWhiteInfluence) && !showAnyScoreLabel && ".confidence-labels",
     (showScore || showBlackPoints || showWhitePoints || showBlackInfluence ||
       showWhiteInfluence) &&
     !(showAllScoreLabels || showBlackPoints) && "#black-points",
@@ -195,6 +201,8 @@ export function withElementVisibility(index: string, url: URL): string {
       showWhiteInfluence) &&
     (showAllScoreLabels || showUnclaimedPoints) &&
     !(showAllScoreLabels || showScoreBar) && "#confidence-bar",
+    (showEval || showBlackWinrate || showWhiteWinrate || showEvalBar) &&
+    !showAnyEvalLabel && ".winrate-bar-labels",
     (showEval || showBlackWinrate || showWhiteWinrate || showEvalBar) &&
     !(showAllEval || showBlackWinrate) && "#winrate-bar-black-label",
     (showEval || showBlackWinrate || showWhiteWinrate || showEvalBar) &&
@@ -261,6 +269,30 @@ body {
   justify-content: flex-start !important;
   margin-top: 0 !important;
 }
+${
+      showScoreBar && !showAnyScoreLabel
+        ? `
+.counting {
+  height: 44px !important;
+}
+.confidence-bar {
+  margin-top: 0 !important;
+}
+`
+        : ""
+    }
+${
+      showEvalBar && !showAnyEvalLabel
+        ? `
+.winrate-bar-section {
+  margin-top: 0 !important;
+}
+.winrate-bar {
+  margin-top: 0 !important;
+}
+`
+        : ""
+    }
 `
     : "";
   const style =

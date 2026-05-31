@@ -1044,13 +1044,13 @@
         calculateBlackBoxColor(i) {
           // Four-color chart: point + influence per player. Only bucket 11
           // (points) and bucket 1 (influence) are used by area/territory modes.
-          return i === this.config.TOTAL_BOXES ? "#000000" : "#555555";
+          return i === this.config.TOTAL_BOXES ? "#000000" : "#444444";
         }
 
         calculateWhiteBoxColor(i) {
           // Four-color chart: point + influence per player. Only bucket 11
           // (points) and bucket 1 (influence) are used by area/territory modes.
-          return i === this.config.TOTAL_BOXES ? "#ffffff" : "#aaaaaa";
+          return i === this.config.TOTAL_BOXES ? "#ffffff" : "#c0c0c0";
         }
 
         addCenterLine(svg) {
@@ -2095,6 +2095,18 @@ body {
   justify-content: flex-start !important;
   margin-top: 0 !important;
 }
+body.score-bar-only .counting {
+  height: 44px !important;
+}
+body.score-bar-only .confidence-bar {
+  margin-top: 0 !important;
+}
+body.eval-bar-only .winrate-bar-section {
+  margin-top: 0 !important;
+}
+body.eval-bar-only .winrate-bar {
+  margin-top: 0 !important;
+}
 `;
             document.head.appendChild(style);
           };
@@ -2194,21 +2206,28 @@ body {
             show("#pie, #pie-over, #pie-text", showPie || showAllInfo);
             show(".move-quality-indicator", showLegend || showAllInfo);
           }
+          const showAllScoreLabels = showScore && territoryRequested.size === 0 && areaRequested.size === 0 && !hasSideFilters;
+          const showAnyScoreLabel = showAllScoreLabels || showBlackPoints || showWhitePoints ||
+            showBlackInfluence || showWhiteInfluence || showUnclaimedPoints;
           if (showScore || showBlackPoints || showWhitePoints || showBlackInfluence || showWhiteInfluence) {
-            const showAllScoreLabels = showScore && territoryRequested.size === 0 && areaRequested.size === 0 && !hasSideFilters;
             show("#black-points", showAllScoreLabels || showBlackPoints);
             show("#white-points", showAllScoreLabels || showWhitePoints);
             show("#black-influence", showAllScoreLabels || showBlackInfluence);
             show("#white-influence", showAllScoreLabels || showWhiteInfluence);
             show("#unclaimed-points", showAllScoreLabels || showUnclaimedPoints);
+            show(".confidence-labels", showAnyScoreLabel);
             show("#confidence-bar", showAllScoreLabels || showScoreBar);
           }
+          const showAllEval = showEval && evalRequested.size === 0 && !hasSideFilters;
+          const showAnyEvalLabel = showAllEval || showBlackWinrate || showWhiteWinrate;
           if (showEval || showBlackWinrate || showWhiteWinrate || showEvalBar) {
-            const showAllEval = showEval && evalRequested.size === 0 && !hasSideFilters;
             show("#winrate-bar-black-label", showAllEval || showBlackWinrate);
             show("#winrate-bar-white-label", showAllEval || showWhiteWinrate);
+            show(".winrate-bar-labels", showAnyEvalLabel);
             show("#winrate-bar", showAllEval || showEvalBar);
           }
+          document.body.classList.toggle("score-bar-only", Boolean(showScoreBar && !showAnyScoreLabel));
+          document.body.classList.toggle("eval-bar-only", Boolean(showEvalBar && !showAnyEvalLabel));
           if (showAnyIndex) {
             show(".mqi-player.black", showBlackIndex);
             show(".mqi-player.white", showWhiteIndex);
