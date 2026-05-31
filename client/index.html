@@ -1906,7 +1906,7 @@
           const value = params.has("pill") ? params.get("pill") : params.get("pills");
           const raw = (hasPillParam ? value || "on" : "off").trim().toLowerCase();
           if (["off", "none", "0", "false"].includes(raw)) return "off";
-          if (["on", "all", "1", "true", ""].includes(raw)) return "on";
+          if (["on", "all", "1", "true", ""].includes(raw)) return "shape";
           if (["points", "point", "score"].includes(raw)) return "points";
           if (["shape", "shapes", "pattern"].includes(raw)) return "shape";
           return "on";
@@ -1917,7 +1917,7 @@
         }
 
         shouldShowPointPills() {
-          return this.pillMode === "points" || this.pillMode === "on";
+          return this.pillMode === "points";
         }
 
         getEffectModeFromUrl() {
@@ -3129,22 +3129,39 @@ body {
 
           document.getElementById("move-shape-pill")?.remove();
 
+          const pill = document.createElement("div");
+          pill.className = "move-shape-pill";
+          pill.textContent = text;
+
+          const measurer = document.createElement("div");
+          measurer.style.position = "absolute";
+          measurer.style.left = "-9999px";
+          measurer.style.top = "-9999px";
+          measurer.style.visibility = "hidden";
+          measurer.appendChild(pill);
+          document.body.appendChild(measurer);
+          const width = Math.ceil(pill.getBoundingClientRect().width);
+          const height = Math.ceil(pill.getBoundingClientRect().height);
+          measurer.remove();
+
           const stoneX = parseFloat(stone.getAttribute("x"));
           const stoneY = parseFloat(stone.getAttribute("y"));
           const stoneSize = parseFloat(stone.getAttribute("width"));
-          const width = 220;
-          const height = 34;
           const margin = 4;
-          const rightX = stoneX + stoneSize;
-          const leftX = stoneX - width;
-          const topY = stoneY - height * 0.25;
-          const bottomY = stoneY + stoneSize - height * 0.75;
+          const stoneLeft = stoneX;
+          const stoneRight = stoneX + stoneSize;
+          const stoneTop = stoneY;
+          const stoneBottom = stoneY + stoneSize;
+          const rightX = stoneRight;
+          const leftX = stoneLeft - width;
+          const topY = stoneTop - height;
+          const bottomY = stoneBottom;
           const x = rightX + width > CONFIG.BOARD.VIEW_BOX_SIZE - margin
             ? Math.max(margin, leftX)
             : Math.max(margin, rightX);
           const y = topY < margin
-            ? Math.min(CONFIG.BOARD.VIEW_BOX_SIZE - height - margin, bottomY)
-            : Math.min(CONFIG.BOARD.VIEW_BOX_SIZE - height - margin, topY);
+            ? Math.min(CONFIG.BOARD.VIEW_BOX_SIZE - height - margin, bottomY + height / 2)
+            : Math.min(CONFIG.BOARD.VIEW_BOX_SIZE - height - margin, topY + height / 2);
 
           const foreignObject = document.createElementNS(CONFIG.SVG_NS, "foreignObject");
           foreignObject.setAttributeNS(null, "id", "move-shape-pill");
@@ -3154,9 +3171,6 @@ body {
           foreignObject.setAttributeNS(null, "height", height);
           foreignObject.style.pointerEvents = "none";
 
-          const pill = document.createElement("div");
-          pill.className = "move-shape-pill";
-          pill.textContent = text;
           foreignObject.appendChild(pill);
           svgContainer.appendChild(foreignObject);
           setTimeout(() => foreignObject.remove(), 3000);
@@ -3674,8 +3688,11 @@ body {
         }
 
         updatePatternMatch(patternData) {
-          const moveName = patternData.moveName || "";
-          if (!this.shouldShowShapePills() || !moveName || moveName === "No pattern found") return;
+          const moveName = (patternData.moveName || "").trim();
+          if (
+            !this.shouldShowShapePills() || !moveName ||
+            ["No pattern found", "Unknown", "undefined", "null"].includes(moveName)
+          ) return;
           this.showMoveShapePill(moveName);
           logger.log(`[UIManager] Pattern pill shown: ${moveName}`);
         }
