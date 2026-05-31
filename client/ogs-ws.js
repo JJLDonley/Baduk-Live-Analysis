@@ -1000,9 +1000,12 @@ class GameEngineWrapper {
         }
         if (globalThis.uiManager) {
           globalThis.uiManager.updateUI(displayState);
+          // Do not render the AI-server board snapshot here. It is row-major
+          // ([y][x]) while the client BoardStateController is column-major
+          // ([x][y]), which can transpose stones during load/restore.
           globalThis.uiManager.updateBoard(
             displayState.moves || [],
-            displayState.board || null,
+            this.boardController.getBoardState(),
           );
         }
       }
