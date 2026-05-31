@@ -962,6 +962,22 @@ class GameEngineWrapper {
     }
   }
 
+  // Merge AI-server snapshots without dropping OGS-only live metadata.
+  mergeAnalysisState(currentState, analysisState) {
+    if (!currentState) return analysisState;
+    if (!analysisState || typeof analysisState !== "object") return currentState;
+
+    return {
+      ...currentState,
+      ...analysisState,
+      players: analysisState.players || currentState.players,
+      clock: analysisState.clock || currentState.clock,
+      phase: analysisState.phase || currentState.phase,
+      finished: analysisState.finished ?? currentState.finished,
+      currentPlayer: analysisState.currentPlayer || currentState.currentPlayer,
+    };
+  }
+
   // Set up AI analysis event handlers
   setupAIAnalysisHandlers() {
     // Set up analysis result handler
@@ -969,17 +985,24 @@ class GameEngineWrapper {
       logger.log(`[GameEngine] Received analysis result:`, result);
 
       // Restore latest server-tracked game/review state first, then analysis.
+      // The AI server snapshot is intentionally small and may not include OGS-only
+      // fields such as players/clock. Merge it into the existing state instead of
+      // replacing the live game object, otherwise clock code can lose players.*.
       if (result.gameState) {
+        const displayState = this.mergeAnalysisState(
+          this.type === "review" ? this.currentReview : this.currentGame,
+          result.gameState,
+        );
         if (this.type === "review") {
-          this.currentReview = result.gameState;
+          this.currentReview = displayState;
         } else {
-          this.currentGame = result.gameState;
+          this.currentGame = displayState;
         }
         if (globalThis.uiManager) {
-          globalThis.uiManager.updateUI(result.gameState);
+          globalThis.uiManager.updateUI(displayState);
           globalThis.uiManager.updateBoard(
-            result.gameState.moves || [],
-            result.gameState.board || null,
+            displayState.moves || [],
+            displayState.board || null,
           );
         }
       }
@@ -1801,8 +1824,11 @@ class GameEngineWrapper {
     const currentPlayerById = newClock.current_player;
 
     // Determine which player is now to move (opponent of who just played)
+    const players = this.currentGame.players;
+    if (!players?.black || !players?.white) return;
+
     let currentPlayerColor = "black";
-    if (currentPlayerById === this.currentGame.players.white.id) {
+    if (currentPlayerById === players.white.id) {
       currentPlayerColor = "white";
     }
 
@@ -1821,13 +1847,17 @@ class GameEngineWrapper {
     if (!this.currentGame.clock) return;
 
     const currentPlayerById = this.currentGame.clock.current_player;
+    const players = this.currentGame.players;
+    if (!players?.black || !players?.white) return;
+
     let currentPlayerColor = "black";
-    if (currentPlayerById === this.currentGame.players.white.id) {
+    if (currentPlayerById === players.white.id) {
       currentPlayerColor = "white";
     }
 
     const localClock = this.currentGame.clock[currentPlayerColor];
     const serverPlayerClock = serverClock[currentPlayerColor];
+    if (!localClock || !serverPlayerClock) return;
 
     // Calculate drift (difference between server and local time)
     let drift = 0;
@@ -1864,17 +1894,22 @@ class GameEngineWrapper {
     ) return;
 
     const currentPlayerById = this.currentGame.clock.current_player;
+    const players = this.currentGame.players;
+    if (!players?.black || !players?.white) return;
+
     let currentPlayer = "black";
 
     // Map player ID to color
-    if (currentPlayerById === this.currentGame.players.black.id) {
+    if (currentPlayerById === players.black.id) {
       currentPlayer = "black";
-    } else if (currentPlayerById === this.currentGame.players.white.id) {
+    } else if (currentPlayerById === players.white.id) {
       currentPlayer = "white";
     }
 
     this.clockInterval = setInterval(() => {
+      if (!this.currentGame?.clock) return;
       const playerClock = this.currentGame.clock[currentPlayer];
+      if (!playerClock) return;
 
       if (playerClock.time > 0) {
         playerClock.time -= 1000; // Decrease by 1 second
