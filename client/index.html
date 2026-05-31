@@ -1901,12 +1901,15 @@
         }
 
         getPillModeFromUrl() {
-          const raw = (this.getUrlParameter("pills") || this.getUrlParameter("pill") || "off").trim().toLowerCase();
+          const params = new URLSearchParams(window.location.search);
+          const hasPillParam = params.has("pill") || params.has("pills");
+          const value = params.has("pill") ? params.get("pill") : params.get("pills");
+          const raw = (hasPillParam ? value || "on" : "off").trim().toLowerCase();
           if (["off", "none", "0", "false"].includes(raw)) return "off";
-          if (["on", "all", "1", "true"].includes(raw)) return "on";
+          if (["on", "all", "1", "true", ""].includes(raw)) return "on";
           if (["points", "point", "score"].includes(raw)) return "points";
           if (["shape", "shapes", "pattern"].includes(raw)) return "shape";
-          return "shape";
+          return "on";
         }
 
         shouldShowShapePills() {
@@ -1918,8 +1921,11 @@
         }
 
         getEffectModeFromUrl() {
-          const raw = (this.getUrlParameter("effect") || this.getUrlParameter("effects") || "off").trim().toLowerCase();
-          return ["1", "true", "on", "yes", "rings", "ring"].includes(raw) ? "on" : "off";
+          const params = new URLSearchParams(window.location.search);
+          const value = params.has("effect") ? params.get("effect") : params.get("effects");
+          if (value === null) return "off";
+          const raw = value.trim().toLowerCase();
+          return raw === "" || ["1", "true", "on", "yes", "rings", "ring"].includes(raw) ? "on" : "off";
         }
 
         shouldShowMoveEffect() {

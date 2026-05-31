@@ -89,17 +89,19 @@ Review URLs can provide clock settings:
 
 ```txt
 ?debug=1      # enable client/server debug logging
-?effect=on    # blue ring move effect
+?effect       # blue ring move effect
+?effect=on    # also works
 ?width=300    # scale visible output to 300px wide
 ?width=300px
 ?c=black      # shape text color mode
 ?c=white
 ?c=quality
 ?t=1          # move shape display near top / review clock mode
-?pills=off    # disable move pills (default)
-?pills=points # show point-loss pills only (loss >= 5)
-?pills=shape  # show shape pills only
-?pills=on     # show shape and point-loss pills
+?pill         # enable move pills
+?pill=points  # show point-loss pills only (loss >= 5)
+?pill=shape   # show shape pills only
+?pill=off     # disable move pills (default)
+?pills=...    # also works
 ```
 
 ## Setup / operations
