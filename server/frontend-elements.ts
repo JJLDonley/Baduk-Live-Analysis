@@ -237,17 +237,30 @@ body {
 `;
   const compactCss = requested.size > 0 || hasSideFilters || hasShortParams
     ? `
+html,
 body {
   background: transparent !important;
+  margin: 0 !important;
   padding: 0 !important;
-  min-height: auto !important;
+  min-height: 0 !important;
+  height: auto !important;
   align-items: flex-start !important;
 }
 .container {
   align-items: flex-start !important;
-  gap: 4px !important;
+  gap: 0 !important;
   padding: 0 !important;
   margin: 0 !important;
+}
+.counting,
+.winrate-bar-section,
+.move-quality-counter,
+.information,
+.goboard,
+.result-modal,
+.game-status {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
 }
 .information {
   ${showInfo ? "display: flex !important;" : ""}

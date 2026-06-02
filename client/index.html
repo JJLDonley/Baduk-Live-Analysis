@@ -40,13 +40,15 @@
 
       /* Information Section */
       .information {
+        --pie-size: clamp(28px, 12vw, 38px);
         display: grid;
-        grid-template-columns: 1fr 75px 1fr;
+        grid-template-columns: minmax(0, 1fr) var(--pie-size) minmax(0, 1fr);
         justify-items: center;
         align-items: center;
-        width: 506px;
+        width: min(506px, 100%);
+        box-sizing: border-box;
         background: rgba(255, 255, 255, 0.1);
-        padding: 10px;
+        padding: clamp(2px, 1.8vw, 10px);
         border-radius: 8px;
         backdrop-filter: blur(10px);
         border: 1px solid rgba(255, 255, 255, 0.2);
@@ -74,9 +76,9 @@
       /* Winrate Pie Chart */
       .winrate {
         position: relative;
-        width: 75px;
-        height: 75px;
-        flex: 0 0 75px;
+        width: var(--pie-size);
+        height: var(--pie-size);
+        flex: 0 0 var(--pie-size);
         grid-column: 2;
       }
 
@@ -104,7 +106,7 @@
         left: 50%;
         transform: translate(-50%, -50%);
         font-family: "Roboto", sans-serif;
-        font-size: 24px;
+        font-size: clamp(10px, 4vw, 14px);
         font-weight: 700;
         color: white;
         text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
@@ -115,8 +117,9 @@
         display: flex;
         align-items: center;
         justify-content: flex-start;
-        gap: 6px;
+        gap: clamp(2px, 1vw, 6px);
         width: 100%;
+        min-width: 0;
       }
 
       .vertical.right-aligned .player-label {
@@ -125,8 +128,8 @@
       }
 
       .turn-stone {
-        width: 20px;
-        height: 20px;
+        width: clamp(10px, 3vw, 20px);
+        height: clamp(10px, 3vw, 20px);
         border-radius: 50%;
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
         transition: opacity 0.3s ease;
@@ -147,9 +150,9 @@
       .move-quality-indicator {
         position: absolute;
         top: 0;
-        right: -24px;
-        width: 12px;
-        height: 75px;
+        right: calc(clamp(6px, 2vw, 12px) * -1.6);
+        width: clamp(6px, 2vw, 12px);
+        height: var(--pie-size);
         display: flex;
         flex-direction: column;
         justify-content: space-between;
@@ -159,8 +162,8 @@
       }
 
       .quality-circle {
-        width: 10px;
-        height: 10px;
+        width: clamp(4px, 1.6vw, 8px);
+        height: clamp(4px, 1.6vw, 8px);
         border-radius: 50%;
         border: 1px solid rgba(255, 255, 255, 0.3);
         box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
@@ -184,17 +187,20 @@
 
       /* Move Quality Counter: per-player raw counts (not Index) */
       .move-quality-counter {
-        width: 528px;
+        width: min(528px, 100%);
+        box-sizing: border-box;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        gap: 8px;
+        gap: clamp(3px, 1.5vw, 8px);
         margin-top: -2px;
       }
 
       .mqi-player {
         display: flex;
-        gap: 3px;
+        flex: 1 1 0;
+        min-width: 0;
+        gap: clamp(1px, 0.75vw, 3px);
       }
 
       .mqi-player.black {
@@ -206,9 +212,11 @@
       }
 
       .mqi-box {
-        min-width: 34px;
-        height: 28px;
-        padding: 0 5px;
+        flex: 1 1 0;
+        min-width: 0;
+        max-width: 34px;
+        height: clamp(16px, 5.3vw, 28px);
+        padding: 0 clamp(1px, 0.9vw, 5px);
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -216,7 +224,7 @@
         box-shadow: 0 2px 5px rgba(0, 0, 0, 0.35);
         color: #000;
         font-family: "Roboto", sans-serif;
-        font-size: 20px;
+        font-size: clamp(11px, 3.8vw, 20px);
         font-weight: 900;
         line-height: 1;
       }
@@ -244,16 +252,22 @@
       /* Player Information */
       .clock {
         font-family: "ClockFont", "Roboto", monospace;
-        font-size: 36px;
+        font-size: clamp(16px, 6vw, 36px);
         font-weight: 700;
-        margin: 2px 0;
+        margin: 1px 0;
+        line-height: 1;
         text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
       }
 
       .player-name {
-        font-size: 18px;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: clamp(10px, 3vw, 18px);
         font-weight: 700;
-        margin: 2px 0;
+        margin: 1px 0;
+        line-height: 1.1;
         text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
       }
 
@@ -2009,6 +2023,10 @@
             container.style.transform = `scale(${scale})`;
 
             const rect = container.getBoundingClientRect();
+            document.documentElement.style.margin = "0";
+            document.documentElement.style.padding = "0";
+            document.body.style.margin = "0";
+            document.body.style.padding = "0";
             document.documentElement.style.width = `${requestedWidth}px`;
             document.body.style.width = `${requestedWidth}px`;
             document.documentElement.style.height = `${rect.height}px`;
@@ -2076,30 +2094,68 @@ body {
             const style = document.createElement("style");
             style.id = "client-side-filter-compact";
             style.textContent = `
+html,
 body {
   background: transparent !important;
+  margin: 0 !important;
   padding: 0 !important;
-  min-height: auto !important;
+  min-height: 0 !important;
+  height: auto !important;
   align-items: flex-start !important;
 }
 .container {
   align-items: flex-start !important;
-  gap: 4px !important;
+  gap: 0 !important;
   padding: 0 !important;
   margin: 0 !important;
 }
+.counting,
+.winrate-bar-section,
+.move-quality-counter,
+.information,
+.goboard,
+.result-modal,
+.game-status {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
 .information {
-  width: auto !important;
+  --pie-size: clamp(24px, 12vw, 38px) !important;
+  width: min(100vw, 506px) !important;
+  box-sizing: border-box !important;
+  grid-template-columns: minmax(0, 1fr) var(--pie-size) minmax(0, 1fr) !important;
   padding: 0 !important;
-  gap: 8px !important;
+  gap: clamp(2px, 1vw, 8px) !important;
   background: transparent !important;
   border: 0 !important;
   border-radius: 0 !important;
   backdrop-filter: none !important;
 }
+.winrate {
+  width: var(--pie-size) !important;
+  height: var(--pie-size) !important;
+  flex-basis: var(--pie-size) !important;
+}
+#pie-text {
+  font-size: clamp(9px, 4vw, 14px) !important;
+}
+.move-quality-indicator {
+  height: var(--pie-size) !important;
+}
 .player-panel {
-  width: auto !important;
-  justify-self: auto !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  justify-self: stretch !important;
+}
+.clock {
+  font-size: clamp(14px, 6vw, 36px) !important;
+}
+.player-name {
+  max-width: 100% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  font-size: clamp(9px, 3vw, 18px) !important;
 }
 .player-panel.white,
 .player-panel.white .player-label {
@@ -2114,9 +2170,24 @@ body {
   opacity: 1;
 }
 .move-quality-counter {
-  width: auto !important;
-  justify-content: flex-start !important;
+  width: min(100vw, 528px) !important;
+  box-sizing: border-box !important;
+  justify-content: space-between !important;
+  gap: clamp(3px, 1.5vw, 8px) !important;
   margin-top: 0 !important;
+}
+.mqi-player {
+  flex: 1 1 0 !important;
+  min-width: 0 !important;
+  gap: clamp(1px, 0.75vw, 3px) !important;
+}
+.mqi-box {
+  flex: 1 1 0 !important;
+  min-width: 0 !important;
+  max-width: 34px !important;
+  height: clamp(16px, 5.3vw, 28px) !important;
+  padding: 0 clamp(1px, 0.9vw, 5px) !important;
+  font-size: clamp(11px, 3.8vw, 20px) !important;
 }
 body.score-bar-only .counting {
   height: auto !important;
