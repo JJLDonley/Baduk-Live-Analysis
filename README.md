@@ -122,10 +122,6 @@ backward compatibility, but new overlays should use the compact params above.
 
 ## Setup / operations
 
-VM HTTPS/nginx setup:
-
-- [`VM_HTTPS_NGINX_SETUP.md`](VM_HTTPS_NGINX_SETUP.md)
-
 VM update helper:
 
 ```sh
