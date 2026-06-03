@@ -122,7 +122,12 @@ backward compatibility, but new overlays should use the compact params above.
 
 ## Setup / operations
 
-Install, VM, nginx, HTTPS, and update instructions live in:
+VM HTTPS/nginx setup:
 
-- [`docs/INSTALL_AND_MANAGING.md`](docs/INSTALL_AND_MANAGING.md)
 - [`VM_HTTPS_NGINX_SETUP.md`](VM_HTTPS_NGINX_SETUP.md)
+
+VM update helper:
+
+```sh
+./scripts/update-vm.sh
+```
